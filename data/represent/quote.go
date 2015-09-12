@@ -4,7 +4,9 @@ import (
 	"fmt"
 
 	"github.com/paulfchristiano/dwimmer/data/core"
+	"github.com/paulfchristiano/dwimmer/data/ints"
 	"github.com/paulfchristiano/dwimmer/data/lists"
+	"github.com/paulfchristiano/dwimmer/data/strings"
 	"github.com/paulfchristiano/dwimmer/dynamics"
 	"github.com/paulfchristiano/dwimmer/term"
 )
@@ -188,9 +190,24 @@ func Ch(c rune) term.T {
 }
 
 func Str(s string) term.T {
-	return term.Str(s)
+	runes := make([]term.T, 0)
+	for _, c := range s {
+		runes = append(runes, strings.Rune.T(Int(int(c))))
+	}
+	return strings.ByRunes.T(List(runes))
 }
 
 func Int(n int) term.T {
-	return term.Int(n)
+	switch {
+	case n == 0:
+		return ints.Zero.T()
+	case n < 0:
+		return ints.Negative.T(Int(-n))
+	case n%2 == 0:
+		return ints.Double.T(Int(n / 2))
+	case n%2 == 1:
+		return ints.DoublePlusOne.T(Int(n / 2))
+	default:
+		panic("unreachable")
+	}
 }

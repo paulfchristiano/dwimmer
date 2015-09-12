@@ -1,14 +1,19 @@
 package represent
 
 import (
+	"bytes"
+
 	"github.com/paulfchristiano/dwimmer/data/core"
 	"github.com/paulfchristiano/dwimmer/data/ints"
 	"github.com/paulfchristiano/dwimmer/data/lists"
+	"github.com/paulfchristiano/dwimmer/data/strings"
 	"github.com/paulfchristiano/dwimmer/dynamics"
 	"github.com/paulfchristiano/dwimmer/term"
 )
 
 var (
+	UnquoteRune = term.Make("what character is []? the answer should be represented " +
+		"with one of the heads defined in the file quote.go")
 	UnquoteActionC = term.Make("what action is []? the answer should be represented " +
 		"with one of the heads defined in the file quote.go")
 	UnquoteC = term.Make("what term constructor is []? the answer should be represented " +
@@ -174,6 +179,34 @@ func ToInt(d dynamics.Dwimmer, t term.T) (int, term.T) {
 	switch t := t.(type) {
 	case term.Int:
 		return int(t), nil
+	case *term.CompoundT:
+		switch t.Head() {
+		case ints.Zero:
+			return 0, nil
+		case ints.One:
+			return 1, nil
+		case ints.Negative:
+			k, err := ToInt(d, t.Values()[0])
+			if err != nil {
+				return 0, term.Make("asked to convert integer, but received [] while converting "+
+					"subexpression []").T(err, t.Values()[0])
+			}
+			return -k, nil
+		case ints.Double:
+			k, err := ToInt(d, t.Values()[0])
+			if err != nil {
+				return 0, term.Make("asked to convert integer, but received [] while converting "+
+					"subexpression []").T(err, t.Values()[0])
+			}
+			return 2 * k, nil
+		case ints.DoublePlusOne:
+			k, err := ToInt(d, t.Values()[0])
+			if err != nil {
+				return 0, term.Make("asked to convert integer, but received [] while converting "+
+					"subexpression []").T(err, t.Values()[0])
+			}
+			return 2*k + 1, nil
+		}
 	}
 	reduced, err := d.Answer(UnquoteInt.T(t))
 	if err != nil {
@@ -186,12 +219,48 @@ func ToStr(d dynamics.Dwimmer, t term.T) (string, term.T) {
 	switch t := t.(type) {
 	case term.Str:
 		return string(t), nil
+	case *term.CompoundT:
+		switch t.Head() {
+		case strings.ByRunes:
+			l, err := ToList(d, t.Values()[0])
+			if err != nil {
+				return "", term.Make("asked to convert string, "+
+					"but received [] while converting its list of characters []").T(err, t.Values()[0])
+			}
+			var b bytes.Buffer
+			for _, quotedRune := range l {
+				r, err := ToRune(d, quotedRune)
+				if err != nil {
+					return "", term.Make("asked to convert string, but received [] while converting "+
+						"character []").T(err, quotedRune)
+				}
+				b.WriteRune(r)
+			}
+			return b.String(), nil
+		}
 	}
 	reduced, err := d.Answer(UnquoteStr.T(t))
 	if err != nil {
 		return "", err
 	}
 	return ToStr(d, reduced)
+}
+
+func ToRune(d dynamics.Dwimmer, t term.T) (rune, term.T) {
+	switch t.Head() {
+	case strings.Rune:
+		unicode, err := ToInt(d, t.Values()[0])
+		if err != nil {
+			return 0, term.Make("asked to convert character, "+
+				"but received [] while converting its unicode encoding []").T(err, t.Values()[0])
+		}
+		return rune(unicode), nil
+	}
+	reduced, err := d.Answer(UnquoteRune.T(t))
+	if err != nil {
+		return 0, reduced
+	}
+	return ToRune(d, reduced)
 }
 
 func ToTemplate(d dynamics.Dwimmer, t term.T) (term.TemplateId, term.T) {

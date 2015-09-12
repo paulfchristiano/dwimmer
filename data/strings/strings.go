@@ -24,6 +24,8 @@ var (
 	Len       = term.Make("what is the length of []?")
 	Concat    = term.Make("what is the result of concatenating [] to []?")
 	Bracketed = term.Make("what is the string formed by enclosing [] in brackets?")
+	Rune      = term.Make("the character with unicode representation []")
+	ByRunes   = term.Make("the string containing the sequence of characters []")
 )
 
 func init() {

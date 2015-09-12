@@ -14,21 +14,7 @@ var (
 	Negative      = term.Make("negative []")
 )
 
-func Explicit(n int) term.T {
-	switch {
-	case n == 0:
-		return Zero.T()
-	case n < 0:
-		return Negative.T(Explicit(-n))
-	case n%2 == 0:
-		return Double.T(Explicit(n / 2))
-	case n%2 == 1:
-		return DoublePlusOne.T(Explicit(n / 2))
-	default:
-		panic("unreachable")
-	}
-}
-
+/*
 var (
 	ExplicitQ = term.Make("what is []? the representation should not involve any wrapped Go objects")
 )
@@ -51,6 +37,7 @@ func init() {
 
 	dynamics.AddNative(s.Copy().AppendTemplate(term.Int(0).Head()), dynamics.Args1(makeExplicit), "x")
 }
+*/
 
 func testEquality(d dynamics.Dwimmer, s *term.SettingT, n, m term.T) term.T {
 	if int(n.(term.Int)) == int(m.(term.Int)) {
