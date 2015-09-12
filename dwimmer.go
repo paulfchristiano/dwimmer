@@ -127,7 +127,7 @@ func (d *dwimmer) Do(a term.ActionT, s *term.SettingT) term.T {
 		oldSetting := s.Setting().RollBack(n)
 		oldid := term.IdSetting(oldSetting)
 		s.AppendTerm(ElicitCorrection.T())
-		action := ElicitAction(d, s.SettingId)
+		action := ElicitAction(d, oldid)
 		d.Save(oldid, dynamics.SimpleTransition{action})
 		s.AppendAction(action)
 		s.AppendTerm(core.OK.T())
