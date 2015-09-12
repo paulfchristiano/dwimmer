@@ -201,6 +201,8 @@ func Int(n int) term.T {
 	switch {
 	case n == 0:
 		return ints.Zero.T()
+	case n == 1:
+		return ints.One.T()
 	case n < 0:
 		return ints.Negative.T(Int(-n))
 	case n%2 == 0:

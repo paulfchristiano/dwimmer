@@ -16,7 +16,7 @@ func TestRepresentations(t *testing.T) {
 		t.Errorf("received error %v", err)
 	}
 	if template != template2 {
-		t.Errorf("%v != %v", template != template2)
+		t.Errorf("%v != %v", template, template2)
 	}
 	setting := &term.Setting{Outputs: []term.TemplateId{template}, Inputs: []term.ActionCId{}}
 	setting2, err := represent.ToSetting(d, represent.Setting(setting))

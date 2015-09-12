@@ -7,6 +7,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/paulfchristiano/dwimmer/data/represent"
 	"github.com/paulfchristiano/dwimmer/term"
 )
 
@@ -64,7 +65,7 @@ func (r *lexer) setActionResult(head string, e *Expr, n int) {
 	switch strings.ToLower(head) {
 	case "return", "reply", "say", "respond", "answer":
 		if t == nil {
-			t = term.Cc(term.Int(n))
+			t = term.Cc(represent.Int(n))
 		}
 		a = term.ReturnC(t)
 	case "ask", "inquire", "do":
@@ -75,7 +76,7 @@ func (r *lexer) setActionResult(head string, e *Expr, n int) {
 		}
 	case "view", "check", "inspect", "see":
 		if t == nil {
-			t = term.Cc(term.Int(n))
+			t = term.Cc(represent.Int(n))
 		}
 		a = term.ViewC(t)
 	case "replace", "rewrite", "change", "jump", "set":
