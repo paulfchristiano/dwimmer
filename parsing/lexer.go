@@ -63,6 +63,9 @@ func (r *lexer) setActionResult(head string, e *Expr, n int) {
 	}
 	switch strings.ToLower(head) {
 	case "return", "reply", "say", "respond", "answer":
+		if t == nil {
+			t = term.Cc(term.Int(n))
+		}
 		a = term.ReturnC(t)
 	case "ask", "inquire", "do":
 		if n == -1 {
