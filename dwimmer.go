@@ -11,6 +11,7 @@ import (
 	_ "github.com/paulfchristiano/dwimmer/data/strings"
 	"github.com/paulfchristiano/dwimmer/dynamics"
 	"github.com/paulfchristiano/dwimmer/storage"
+	_ "github.com/paulfchristiano/dwimmer/storage/store"
 	"github.com/paulfchristiano/dwimmer/term"
 	"github.com/paulfchristiano/dwimmer/ui"
 )
