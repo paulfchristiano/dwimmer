@@ -1,15 +1,15 @@
 package dwimmer
 
 import (
-	"container/heap"
+	"fmt"
 
 	"github.com/paulfchristiano/dwimmer/data/core"
 	"github.com/paulfchristiano/dwimmer/data/represent"
 	"github.com/paulfchristiano/dwimmer/dynamics"
 	"github.com/paulfchristiano/dwimmer/parsing"
+	"github.com/paulfchristiano/dwimmer/prediction/similarity"
 	"github.com/paulfchristiano/dwimmer/term"
 	"github.com/paulfchristiano/dwimmer/ui"
-	"github.com/xrash/smetrics"
 )
 
 var ActionQ = term.Make("what action should be taken in the setting []?")
@@ -27,7 +27,7 @@ func findAction(d dynamics.Dwimmer, s *term.SettingT, quotedSetting term.T) term
 	settingId := term.IdSetting(setting)
 	transition, ok := d.Get(settingId)
 	if !ok {
-		action := ElicitAction(d, settingId)
+		action := ElicitAction(d, settingId, true)
 		transition = dynamics.SimpleTransition{action}
 		d.Save(settingId, transition)
 	}
@@ -42,24 +42,35 @@ func ShowSettingS(d dynamics.Dwimmer, settingS *term.SettingS) {
 }
 
 //TODO only do this sometimes, or control better the length, or something...
-func GetHints(d dynamics.Dwimmer, id term.SettingId, n int) []string {
-	hs := hints(d, id, n)
-	hint_strings := make([]string, len(hs))
-	if len(hs) > 0 {
-		for i, h := range hs {
-			hint_strings[len(hs)-1-i] = "replace " + h.String()
-			//d.Writeln(fmt.Sprintf("%d. %v", i, h))
-		}
-		//d.Writeln("")
+func GetHints(d dynamics.Dwimmer, s *term.SettingS, n int) []string {
+	result := []string{}
+	actions, _ := similarity.Suggestions(d, s.Setting(), n)
+	for _, actionC := range actions {
+		actionS := actionC.Uninstantiate(s.Names)
+		result = append(result, actionS.String())
 	}
-	return hint_strings
+	reverseHints(result)
+	return result
 }
 
-func ElicitAction(d dynamics.Dwimmer, id term.SettingId) term.ActionC {
+func reverseHints(l []string) {
+	for i, j := 0, len(l)-1; i < j; i, j = i+1, j-1 {
+		l[i], l[j] = l[j], l[i]
+	}
+}
+
+func ElicitAction(d dynamics.Dwimmer, id term.SettingId, hints bool) term.ActionC {
 	setting := id.Setting()
 	settingS := addNames(setting)
 	ShowSettingS(d, settingS)
-	hint_strings := GetHints(d, id, 6)
+	hint_strings := []string{}
+	if hints {
+		hint_strings = GetHints(d, settingS, 6)
+		for i, hint := range hint_strings {
+			d.Writeln(fmt.Sprintf("%d. %s", i, hint))
+		}
+		d.Writeln("")
+	}
 	for {
 		input := d.Readln(" < ", hint_strings)
 		a := parsing.ParseAction(input, settingS.Names)
@@ -99,67 +110,6 @@ func questionLike(c term.C) bool {
 		}
 	}
 	return false
-}
-
-type prioritized struct {
-	priority float32
-	index    int
-}
-
-type tmHeap struct {
-	heap []prioritized
-}
-
-func makeHeap() *tmHeap {
-	return &tmHeap{make([]prioritized, 0)}
-}
-
-func (t *tmHeap) Len() int {
-	return len(t.heap)
-}
-
-func (t *tmHeap) Less(i, j int) bool {
-	//NOTE reversed order
-	return t.heap[i].priority > t.heap[j].priority
-}
-
-func (t *tmHeap) Swap(i, j int) {
-	t.heap[i], t.heap[j] = t.heap[j], t.heap[i]
-}
-
-func (t *tmHeap) Push(x interface{}) {
-	t.heap = append(t.heap, x.(prioritized))
-}
-
-func (t *tmHeap) Pop() (result interface{}) {
-	t.heap, result = t.heap[:t.Len()-1], t.heap[t.Len()-1]
-	return result
-}
-
-//TODO this needs to be improved a lot!
-func distance(a, b string) float32 {
-	return float32(smetrics.WagnerFischer(a, b, 1, 1, 2)) / float32(len(a)+len(b))
-}
-
-func hints(d dynamics.Dwimmer, settingId term.SettingId, num int) []*term.Template {
-	prefixId := settingId.IdInit()
-	s := settingId.IdLast().Template().String()
-	h := makeHeap()
-	alltms := make([]*term.Template, 0)
-	ptms := make([]prioritized, 0)
-	for _, tmid := range d.Continuations(prefixId) {
-		tm := tmid.Template()
-		ptms = append(ptms, prioritized{-distance(s, tm.String()), len(alltms)})
-		alltms = append(alltms, tm)
-	}
-	h.heap = ptms
-	heap.Init(h)
-	result := make([]*term.Template, 0)
-	for i := 0; i < num && h.Len() > 0; i++ {
-		next := heap.Pop(h)
-		result = append(result, alltms[next.(prioritized).index])
-	}
-	return result
 }
 
 var allNames = "xyzwijklmnstuvabcdefg"

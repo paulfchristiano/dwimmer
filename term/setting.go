@@ -56,10 +56,34 @@ type SettingS struct {
 	Names []string
 }
 
+func (s *Setting) Id() SettingId {
+	return IdSetting(s)
+}
+
 func (s *SettingS) Copy() *SettingS {
 	result := &SettingS{s.SettingId, make([]string, len(s.Names))}
 	copy(result.Names, s.Names)
 	return result
+}
+
+func (s *Setting) Copy() *Setting {
+	result := &Setting{
+		Inputs:  make([]ActionCId, len(s.Inputs)),
+		Outputs: make([]TemplateId, len(s.Outputs)),
+	}
+	copy(result.Inputs, s.Inputs)
+	copy(result.Outputs, s.Outputs)
+	return result
+}
+
+func (s *Setting) AppendAction(a ActionCId) *Setting {
+	s.Inputs = append(s.Inputs, a)
+	return s
+}
+
+func (s *Setting) AppendTemplate(t TemplateId) *Setting {
+	s.Outputs = append(s.Outputs, t)
+	return s
 }
 
 func (s *SettingS) AppendAction(a ActionC) *SettingS {

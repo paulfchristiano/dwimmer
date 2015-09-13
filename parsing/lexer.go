@@ -44,6 +44,9 @@ type lexer struct {
 }
 
 func (r *lexer) parseWord(s string) ExprPart {
+	if s[0] == '#' {
+		s = s[1:]
+	}
 	for n, name := range r.interpreter.names {
 		if name == s {
 			return exprTerm{term.ReferenceC{n}}
@@ -171,6 +174,9 @@ func (r *lexer) fsm(lval *yySymType, b bytes.Buffer, s state) int {
 	case startS:
 		switch {
 		case alpha(c) || c == '_':
+			s = wordS
+			b.WriteRune(c)
+		case c == '#':
 			s = wordS
 			b.WriteRune(c)
 		case numeric(c):

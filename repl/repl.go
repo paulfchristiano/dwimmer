@@ -18,7 +18,7 @@ func main() {
 	setting := term.InitT()
 	setting.AppendTerm(Home.T())
 	for {
-		actionC := dwimmer.ElicitAction(d, setting.SettingId)
+		actionC := dwimmer.ElicitAction(d, setting.SettingId, false)
 		setting.AppendAction(actionC)
 		d.DoC(actionC, setting)
 	}

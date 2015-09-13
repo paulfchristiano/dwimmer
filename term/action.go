@@ -86,6 +86,10 @@ func (a ActionCId) String() string {
 	return a.ActionC().String()
 }
 
+func (a ActionC) Id() ActionCId {
+	return IdActionC(a)
+}
+
 func (a ActionC) String() string {
 	b := new(bytes.Buffer)
 	b.WriteString(a.Act.String())
