@@ -9,7 +9,6 @@ import (
 	"github.com/paulfchristiano/dwimmer/parsing"
 	"github.com/paulfchristiano/dwimmer/prediction/similarity"
 	"github.com/paulfchristiano/dwimmer/term"
-	"github.com/paulfchristiano/dwimmer/ui"
 )
 
 var ActionQ = term.Make("what action should be taken in the setting []?")
@@ -35,9 +34,9 @@ func findAction(d dynamics.Dwimmer, s *term.SettingT, quotedSetting term.T) term
 }
 
 func ShowSettingS(d dynamics.Dwimmer, settingS *term.SettingS) {
-	ui.Clear()
+	d.Clear()
 	for _, line := range settingS.Lines() {
-		d.Writeln(line)
+		d.Println(line)
 	}
 }
 
@@ -67,9 +66,9 @@ func ElicitAction(d dynamics.Dwimmer, id term.SettingId, hints bool) term.Action
 	if hints {
 		hint_strings = GetHints(d, settingS, 6)
 		for i, hint := range hint_strings {
-			d.Writeln(fmt.Sprintf("%d. %s", i, hint))
+			d.Println(fmt.Sprintf("%d. %s", i, hint))
 		}
-		d.Writeln("")
+		d.Println("")
 	}
 	for {
 		input := d.Readln(" < ", hint_strings)
@@ -87,9 +86,9 @@ func ElicitAction(d dynamics.Dwimmer, id term.SettingId, hints bool) term.Action
 					a = new(term.ActionC)
 					*a = term.ViewC(c)
 				}
-				d.Writeln("please input an action (ask, view, or return)")
+				d.Println("please input an action (ask, view, return, close, delete, correct, or tell)")
 			} else {
-				d.Writeln("that response wasn't parsed correctly")
+				d.Println("that response wasn't parsed correctly")
 			}
 		}
 		if a != nil {

@@ -10,24 +10,39 @@ import (
 	"github.com/paulfchristiano/dwimmer/data/represent"
 	_ "github.com/paulfchristiano/dwimmer/data/strings"
 	"github.com/paulfchristiano/dwimmer/dynamics"
+	"github.com/paulfchristiano/dwimmer/storage"
 	"github.com/paulfchristiano/dwimmer/term"
 	"github.com/paulfchristiano/dwimmer/ui"
 )
 
-type dwimmer struct {
-	*dynamics.TransitionTable
+type Dwimmer struct {
+	dynamics.Transitions
+	ui.UIImplementer
+	storage.StorageImplementer
 }
 
-func (d *dwimmer) Transitions() *dynamics.TransitionTable {
-	return d.TransitionTable
+func (d *Dwimmer) Close() {
+	d.CloseUI()
+	d.CloseStorage()
+	RecoverStackError(recover())
 }
 
-func (d *dwimmer) Writeln(s string) {
-	ui.Println(s)
+func (d *Dwimmer) Readln(s string, hintss ...[]string) string {
+	defer func() {
+		e := recover()
+		if e != nil {
+			switch e {
+			case "interrupted":
+				panic(StackError{[]*term.Template{}, "interrupted during input"})
+			default:
+				panic(e)
+			}
+		}
+	}()
+	return d.UIImplementer.Readln(s, hintss...)
 }
 
-func DisplayStackError() {
-	e := recover()
+func RecoverStackError(e interface{}) {
 	if e != nil {
 		switch e := e.(type) {
 		case StackError:
@@ -41,39 +56,21 @@ func DisplayStackError() {
 	}
 }
 
-func (d *dwimmer) Readln(s string, hintss ...[]string) string {
-	defer func() {
-		e := recover()
-		if e != nil {
-			switch e {
-			case "interrupted":
-				panic(StackError{[]*term.Template{}, "interrupted during input"})
-			default:
-				panic(e)
-			}
-		}
-	}()
-	var hints []string
-	if len(hintss) == 0 {
-		hints = []string{}
-	} else {
-		hints = hintss[0]
+func NewDwimmer() *Dwimmer {
+	result := &Dwimmer{
+		Transitions:        dynamics.DefaultTransitions,
+		UIImplementer:      &ui.Term{},
+		StorageImplementer: storage.NewStorage("state"),
 	}
-	ui.Print(s)
-	return ui.GetLine(hints)
+	result.InitUI()
+	return result
 }
 
-func Dwimmer() *dwimmer {
-	return &dwimmer{
-		dynamics.DefaultTransitions,
-	}
-}
-
-func (d *dwimmer) DoC(a term.ActionC, s *term.SettingT) term.T {
+func (d *Dwimmer) DoC(a term.ActionC, s *term.SettingT) term.T {
 	return d.Do(a.Instantiate(s.Args), s)
 }
 
-func (d *dwimmer) Do(a term.ActionT, s *term.SettingT) term.T {
+func (d *Dwimmer) Do(a term.ActionT, s *term.SettingT) term.T {
 	switch a.Act {
 	case term.Return:
 		return a.Args[0]
@@ -150,7 +147,7 @@ var (
 	ElicitCorrection = term.Make("the next action you enter will be used as a correction")
 )
 
-func (d *dwimmer) Run(setting *term.SettingT) term.T {
+func (d *Dwimmer) Run(setting *term.SettingT) term.T {
 	for {
 		transition, ok := d.Get(setting.Head())
 		if !ok {
@@ -211,7 +208,7 @@ func (e *StackError) StackSize() int {
 	return len(e.stack)
 }
 
-func (d *dwimmer) Ask(Q term.T) (term.T, *term.SettingT) {
+func (d *Dwimmer) Ask(Q term.T) (term.T, *term.SettingT) {
 	defer func() {
 		x := recover()
 		if x != nil {
@@ -238,7 +235,7 @@ var (
 	Closed          = term.Make("a standin term returned when a deleted argument is viewed")
 )
 
-func (d *dwimmer) Answer(q term.T) (term.T, term.T) {
+func (d *Dwimmer) Answer(q term.T) (term.T, term.T) {
 	a, _ := d.Ask(q)
 	switch a.Head() {
 	case core.Answer.Head():

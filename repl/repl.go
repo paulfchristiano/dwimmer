@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/paulfchristiano/dwimmer"
 	"github.com/paulfchristiano/dwimmer/term"
-	"github.com/paulfchristiano/dwimmer/ui"
 )
 
 var (
@@ -11,12 +10,11 @@ var (
 )
 
 func main() {
-	defer dwimmer.DisplayStackError()
-	ui.Init()
-	defer ui.Close()
-	d := dwimmer.Dwimmer()
+	d := dwimmer.NewDwimmer()
+	defer d.Close()
 	setting := term.InitT()
 	setting.AppendTerm(Home.T())
+	d.Debug("testing!")
 	for {
 		actionC := dwimmer.ElicitAction(d, setting.SettingId, false)
 		setting.AppendAction(actionC)

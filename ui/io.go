@@ -8,67 +8,101 @@ import (
 
 var at = termbox.ColorDefault
 
-func Clear() {
-	cursorx = 0
-	cursory = 0
-	termbox.Clear(at, at)
-	termbox.Flush()
-	/*
-		c := exec.Command("clear")
-		c.Stdout = os.Stdout
-		c.Run()
-	*/
+type UIImplementer interface {
+	Println(string)
+	Debug(string)
+	Readln(string, ...[]string) string
+	GetCh() rune
+	Clear()
+	InitUI()
+	CloseUI()
 }
 
-var cursorx, cursory int
+type Term struct {
+	initialized bool
+	x, y        int
+}
 
-func SetCursor(x, y int) {
-	cursorx = x
-	cursory = y
+func (t *Term) Check() {
+	if !t.initialized {
+		panic("using an uninitialized terminal!")
+	}
+
+}
+
+func (t *Term) Debug(s string) {
+	t.Println(s)
+	Flush()
+}
+
+func (t *Term) Clear() {
+	t.Check()
+	t.x = 0
+	t.y = 0
+	termbox.Clear(at, at)
+	termbox.Clear(at, at)
+	termbox.Flush()
+}
+
+func (t *Term) SetCursor(x, y int) {
+	t.Check()
+	t.x = x
+	t.y = y
 	termbox.SetCursor(x, y)
 }
 
-func MoveCursor(dx, dy int) {
-	SetCursor(cursorx+dx, cursory+dy)
+func (t *Term) MoveCursor(dx, dy int) {
+	t.SetCursor(t.x+dx, t.y+dy)
 }
 
-func PrintCh(ch rune) {
-	Print(string([]rune{ch}))
+func (t *Term) PrintCh(ch rune) {
+	t.Print(string([]rune{ch}))
 }
 
-func Print(s string) {
-	n := PrintNoMove(s)
-	MoveCursor(n, 0)
+func (t *Term) Print(s string) {
+	n := t.PrintNoMove(s)
+	t.MoveCursor(n, 0)
 }
 
-func PrintNoMove(s string) int {
-	x, y := cursorx, cursory
+func (t *Term) PrintNoMove(s string) int {
+	t.Check()
+	x, y := t.x, t.y
 	for _, ch := range s {
 		termbox.SetCell(x, y, ch, at, at)
 		x++
 	}
-	return x - cursorx
+	return x - t.x
 }
 
-func Println(s string) {
-	Print(s)
-	Newln()
+func (t *Term) Println(s string) {
+	t.Print(s)
+	t.Newln()
 }
 
-func Newln() {
-	SetCursor(0, cursory+1)
+func (t *Term) Newln() {
+	t.SetCursor(0, t.y+1)
 }
 
-func ClearRestOfLine() {
+func (t *Term) ClearRestOfLine() {
+	t.Check()
 	width, _ := termbox.Size()
-	for i := cursorx; i < cursorx+width; i++ {
-		termbox.SetCell(i, cursory, ' ', at, at)
+	for i := t.x; i < t.x+width; i++ {
+		termbox.SetCell(i, t.y, ' ', at, at)
 	}
 }
 
-func GetLine(hints []string) string {
+func (t *Term) Readln(s string, hintss ...[]string) string {
+	hints := []string{}
+	for _, hs := range hintss {
+		hints = append(hints, hs...)
+	}
+	t.Print(s)
+	return t.Getln(hints)
+}
+
+func (t *Term) Getln(hints []string) string {
 	Flush()
-	startx, starty := cursorx, cursory
+	startx, starty := t.x, t.y
 	offsetx, offsety := 0, 0
 	input := ""
 	hints = append(hints, "")
@@ -78,7 +112,7 @@ func GetLine(hints []string) string {
 			var ch rune
 			switch {
 			case ev.Key == termbox.KeyEnter:
-				Newln()
+				t.Newln()
 				return input
 			case ev.Key == termbox.KeyCtrlC:
 				panic("interrupted")
@@ -127,17 +161,17 @@ func GetLine(hints []string) string {
 				input = fmt.Sprintf("%s%c%s", input[:offsetx], ch, input[offsetx:])
 				offsetx++
 			}
-			SetCursor(startx, starty)
-			ClearRestOfLine()
-			PrintNoMove(input)
-			MoveCursor(offsetx, offsety)
+			t.SetCursor(startx, starty)
+			t.ClearRestOfLine()
+			t.PrintNoMove(input)
+			t.MoveCursor(offsetx, offsety)
 			Flush()
 		}
 
 	}
 }
 
-func GetCh() rune {
+func (t *Term) GetCh() rune {
 	Flush()
 	for {
 		if ev := termbox.PollEvent(); ev.Type == termbox.EventKey {
@@ -149,16 +183,17 @@ func GetCh() rune {
 	}
 }
 
-func Init() {
+func (t *Term) InitUI() {
 	err := termbox.Init()
 	if err != nil {
 		panic(err)
 	}
-	SetCursor(0, 0)
-	termbox.Flush()
+	t.initialized = true
+	t.SetCursor(0, 0)
+	Flush()
 }
 
-func Close() {
+func (t *Term) CloseUI() {
 	termbox.Close()
 }
 

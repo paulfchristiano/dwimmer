@@ -2,11 +2,9 @@ package dynamics
 
 import (
 	"github.com/paulfchristiano/dwimmer/data/core"
-	"github.com/paulfchristiano/dwimmer/database"
 	"github.com/paulfchristiano/dwimmer/prediction/synonyms"
+	"github.com/paulfchristiano/dwimmer/storage/database"
 	"github.com/paulfchristiano/dwimmer/term"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type Transition interface {
@@ -31,26 +29,45 @@ func (t SimpleTransition) Step(d Dwimmer, s *term.SettingT) term.T {
 }
 
 type TransitionTable struct {
-	database      *mgo.Collection
+	collection    database.C
 	table         map[term.SettingId]Transition
 	continuations map[term.SettingId](map[term.TemplateId]bool)
 	Synonyms      *synonyms.UF
 }
 
+type Transitions interface {
+	Save(term.SettingId, Transition)
+	Set(term.SettingId, Transition)
+	Get(term.SettingId) (Transition, bool)
+	Continuations(term.SettingId) []term.TemplateId
+}
+
 var DefaultTransitions = NewTransitionTable(database.Collection("transitions"))
 
-func NewTransitionTable(C *mgo.Collection) *TransitionTable {
+func NewTransitionTable(C database.C) *TransitionTable {
 	result := &TransitionTable{
-		database:      C,
+		collection:    C,
 		table:         make(map[term.SettingId]Transition),
 		continuations: make(map[term.SettingId](map[term.TemplateId]bool)),
 		Synonyms:      synonyms.NewUF(),
 	}
-	var transition bson.M
-	iter := C.Find(nil).Iter()
-	for iter.Next(&transition) {
-		setting := term.LoadSetting(transition["setting"])
-		action := term.LoadActionC(transition["action"])
+	for _, transition := range C.All() {
+		settingRecord, ok := transition["key"]
+		if !ok {
+			settingRecord, ok = transition["setting"]
+		}
+		if !ok {
+			continue
+		}
+		actionRecord, ok := transition["value"]
+		if !ok {
+			actionRecord, ok = transition["action"]
+		}
+		if !ok {
+			continue
+		}
+		setting := term.LoadSetting(settingRecord)
+		action := term.LoadActionC(actionRecord)
 		result.SetSimpleC(term.IdSetting(setting), action)
 	}
 	return result
@@ -88,10 +105,7 @@ func (table *TransitionTable) Save(s term.SettingId, t Transition) {
 	table.Set(s, t)
 	switch t := t.(type) {
 	case SimpleTransition:
-		table.database.Upsert(
-			bson.M{"setting": term.SaveSetting(s.Setting())},
-			bson.M{"$set": bson.M{"action": term.SaveActionC(t.Action)}},
-		)
+		table.collection.Set(term.SaveSetting(s.Setting()), term.SaveActionC(t.Action))
 	}
 }
 

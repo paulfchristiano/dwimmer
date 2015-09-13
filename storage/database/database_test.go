@@ -4,8 +4,6 @@ import (
 	"testing"
 
 	"github.com/paulfchristiano/dwimmer/term"
-
-	"gopkg.in/mgo.v2/bson"
 )
 
 /*
@@ -39,25 +37,16 @@ func BenchmarkSearch(b *testing.B) {
 
 func TestEncoding(t *testing.T) {
 	collection := Collection("testing")
-	collection.Remove(nil)
 	template := term.Make("test [] term")
 	c := template.C(term.ReferenceC{0})
 	cc := term.ConstC{template.T(term.Make("stub").T())}
 	action := term.ReturnC(c)
 	settingS := term.InitS().AppendTemplate(template, "q").AppendAction(action)
 	setting := settingS.Setting()
-	collection.Upsert(
-		bson.M{"key": 1},
-		bson.M{"$set": bson.M{"value": term.SaveSetting(setting)}},
-	)
-	collection.Upsert(
-		bson.M{"key": 2},
-		bson.M{"$set": bson.M{"value": term.SaveC(cc)}},
-	)
-	var x bson.M
-	iter := collection.Find(nil).Iter()
+	collection.Set(1, term.SaveSetting(setting))
+	collection.Set(2, term.SaveC(cc))
 	found := 0
-	for iter.Next(&x) {
+	for _, x := range collection.All() {
 		if x["key"] == 1 {
 			newVal := term.LoadSetting(x["value"])
 			newId := term.IdSetting(newVal)
@@ -79,5 +68,21 @@ func TestEncoding(t *testing.T) {
 	}
 	if found < 2 {
 		t.Errorf("found %d < 2 items", found)
+	}
+	{
+		newSetting := term.LoadSetting(collection.Get(1))
+		newId := term.IdSetting(newSetting)
+		oldId := term.IdSetting(setting)
+		if newId != oldId {
+			t.Errorf("%v != %v", newSetting, setting)
+		}
+	}
+	{
+		newC := term.LoadC(collection.Get(2))
+		newId := term.IdC(newC)
+		oldId := term.IdC(cc)
+		if newId != oldId {
+			t.Errorf("%v != %v", newC, cc)
+		}
 	}
 }
