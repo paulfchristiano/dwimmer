@@ -9,4 +9,5 @@ var (
 	No        = term.Make("no")
 	NoAnswer  = term.Make("no answer was given to the posed question")
 	AnswerAnd = term.Make("the answer to the posed question is [], and the question also satisfies []")
+	Equal     = term.Make("are [] and [] equal?")
 )
