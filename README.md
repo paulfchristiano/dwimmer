@@ -8,13 +8,13 @@ To start REPL: with mongod running locally, run repl
 
 - view X ("view x"): View the variable with name X.
 - ask Q ("ask what is 3 + 4?"): Ask the question Q. 
-The return values are the result and @C, where C is a channel that can be used for follow-up questions.
+There are two return values: the response itself, and "@C", where C is a channel that can be used for follow-up questions.
 - reply A ("reply 7"): Send the message A to your parent process.
-- ask@C Q ("ask@y how reliable is that answer?"): Send the message Q to the channel bound to X.
-- delete X ("delete x"): Delete the variable named X. If there are no remaining references to that term, the GC can free it.
+- delete X ("delete x"): Delete the variable named X. If there are no remaining references to that term, the GC can free it. This is especially important for closing channels.
 - replace N X ("replace 6 the answer to the question is [A]"): 
 Replaces output #N with X, removing all of the subsequent inputs and outputs.
-- correct N ("correct 7"): Remove the rule that produced input N, and provide a new action to be used instead.
+- correct N ("correct 7"): Remove the rule that produced input N, and prompt the user for a new command to be used instead.
+- ask@C Q ("ask@y how reliable is that answer?"): Send the message Q to the channel bound to C. Note that this won't change the state of channel C---instead it will return a new channel. If the message Q is sent to channel C again, it will generally receive the same response.
 
 ### Input format:
 
