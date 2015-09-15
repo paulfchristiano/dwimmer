@@ -14,7 +14,9 @@ import (
 var (
 	UnquoteRune = term.Make("what character is []? the answer should be represented " +
 		"with one of the heads defined in the file quote.go")
-	UnquoteActionC = term.Make("what action is []? the answer should be represented " +
+	UnquoteActionC = term.Make("what compiled action is []? " +
+		"the answer should be represented with one of the heads defined in the file quote.go")
+	UnquoteAction = term.Make("what action is []? the answer should be represented " +
 		"with one of the heads defined in the file quote.go")
 	UnquoteC = term.Make("what term constructor is []? the answer should be represented " +
 		"with one of the heads defined in the file quote.go")
@@ -32,6 +34,8 @@ var (
 		"with one of the heads defined in the file quote.go")
 	UnquoteTransition = term.Make("what transition is []? the answer should be represented " +
 		"with one of the heads defined in the file quote.go")
+	UnquoteSettingLine = term.Make("what line of a setting is []? the answer should be  " +
+		"represented with one of the heads in quote.go")
 )
 
 func ToTransition(d dynamics.Dwimmer, t term.T) (dynamics.Transition, term.T) {
@@ -57,78 +61,59 @@ func ToTransition(d dynamics.Dwimmer, t term.T) (dynamics.Transition, term.T) {
 func ToActionC(d dynamics.Dwimmer, t term.T) (term.ActionC, term.T) {
 	var nullaction term.ActionC
 	switch t.Head() {
-	case QuotedReturn.Head():
-		arg, err := ToC(d, t.Values()[0])
+	case QuotedActionC.Head():
+		act, err := ToAction(d, t.Values()[0])
 		if err != nil {
-			return nullaction, term.Make("asked to convert a compiled return action, "+
-				"but received [] while converting its argument []").T(err, t.Values()[0])
+			return nullaction, term.Make("asked to convert a compiled action, "+
+				"but received [] while converting its type []").T(err, t.Values()[0])
 		}
-		return term.ReturnC(arg), nil
-	case QuotedAsk.Head():
-		arg, err := ToC(d, t.Values()[0])
+		args, err := ToList(d, t.Values()[1])
 		if err != nil {
-			return nullaction, term.Make("asked to convert a compiled ask action, "+
-				"but received [] while converting its argument []").T(err, t.Values()[0])
+			return nullaction, term.Make("asked to convert a compiled action, "+
+				"but received [] while converting its arguments []").T(err, t.Values()[1])
 		}
-		return term.AskC(arg), nil
-	case QuotedView.Head():
-		arg, err := ToC(d, t.Values()[0])
+		rawargs := make([]term.C, len(args))
+		for i, arg := range args {
+			rawargs[i], err = ToC(d, arg)
+			if err != nil {
+				return nullaction, term.Make("asked to convert a compiled action, "+
+					"but received [] while converting its argument []").T(err, arg)
+			}
+		}
+		intargs, err := ToList(d, t.Values()[2])
 		if err != nil {
-			return nullaction, term.Make("asked to convert a compiled view action, "+
-				"but received [] while converting its argument []").T(err, t.Values()[0])
+			return nullaction, term.Make("asked to convert a compiled action, "+
+				"but received [] while converting its indices []").T(err, t.Values()[1])
 		}
-		return term.ViewC(arg), nil
-	case QuotedReplace.Head():
-		arg, err := ToC(d, t.Values()[0])
-		if err != nil {
-			return nullaction, term.Make("asked to convert a compiled replacement action, "+
-				"but received [] while converting its argument []").T(err, t.Values()[0])
+		rawindices := make([]int, len(intargs))
+		for i, index := range intargs {
+			rawindices[i], err = ToInt(d, index)
+			if err != nil {
+				return nullaction, term.Make("asked to convert a compiled action, "+
+					"but received [] while converting its index []").T(err, index)
+			}
 		}
-		n, err := ToInt(d, t.Values()[1])
-		if err != nil {
-			return nullaction, term.Make("asked to convert a compiled replacement action, "+
-				"but received [] while converting its index[]").T(err, t.Values()[1])
-		}
-		return term.ReplaceC(arg, n), nil
-	case QuotedClarify.Head():
-		arg, err := ToC(d, t.Values()[0])
-		if err != nil {
-			return nullaction, term.Make("asked to convert a compiled clarify action, "+
-				"but received [] while converting its argument []").T(err, t.Values()[0])
-		}
-		n, err := ToInt(d, t.Values()[1])
-		if err != nil {
-			return nullaction, term.Make("asked to convert a compiled clarify action, "+
-				"but received [] while converting its index[]").T(err, t.Values()[1])
-		}
-		return term.ClarifyC(arg, n), nil
-	case QuotedCorrect.Head():
-		n, err := ToInt(d, t.Values()[0])
-		if err != nil {
-			return nullaction, term.Make("asked to convert a compiled correct action, "+
-				"but received [] while converting its index[]").T(err, t.Values()[0])
-		}
-		return term.CorrectC(n), nil
-	case QuotedClose.Head():
-		n, err := ToInt(d, t.Values()[0])
-		if err != nil {
-			return nullaction, term.Make("asked to convert a compiled close action, "+
-				"but received [] while converting its index[]").T(err, t.Values()[0])
-		}
-		return term.CloseC(n), nil
-	case QuotedDelete.Head():
-		arg, err := ToInt(d, t.Values()[0])
-		if err != nil {
-			return nullaction, term.Make("asked to convert a compiled delete action, "+
-				"but received [] while converting its argument []").T(err, t.Values()[0])
-		}
-		return term.DeleteC(arg), nil
+		return term.ActionC{act, rawargs, rawindices}, nil
 	}
 	reduced, err := d.Answer(UnquoteActionC.T(t))
 	if err != nil {
 		return nullaction, err
 	}
 	return ToActionC(d, reduced)
+}
+
+func ToAction(d dynamics.Dwimmer, t term.T) (term.Action, term.T) {
+	var nullaction term.Action
+	for k, v := range ActionLookup {
+		if v == t.Head() {
+			return k, nil
+		}
+	}
+	reduced, err := d.Answer(UnquoteAction.T(t))
+	if err != nil {
+		return nullaction, err
+	}
+	return ToAction(d, reduced)
 }
 
 func ToC(d dynamics.Dwimmer, t term.T) (term.C, term.T) {
@@ -208,6 +193,7 @@ func ToInt(d dynamics.Dwimmer, t term.T) (int, term.T) {
 			return 2*k + 1, nil
 		}
 	}
+	d.Debug(t.String())
 	reduced, err := d.Answer(UnquoteInt.T(t))
 	if err != nil {
 		return 0, err
@@ -363,42 +349,43 @@ func ToReverseList(d dynamics.Dwimmer, t term.T) ([]term.T, term.T) {
 	return ToReverseList(d, reduced)
 }
 
-func toSettingLines(d dynamics.Dwimmer, t term.T) ([]term.TemplateId, []term.ActionCId, term.T) {
-	outputs := make([]term.TemplateId, 0)
-	inputs := make([]term.ActionCId, 0)
-	var err term.T
-	l, err := ToList(d, t)
-	if err != nil {
-		return nil, nil, term.Make("asked to convert a list of lines in a setting, " +
-			"but received [] while converting to a list at all").T(err)
-	}
-	for i := 0; 2*i < len(l); i++ {
-		output, err := ToTemplate(d, l[2*i])
+func ToSettingLine(d dynamics.Dwimmer, t term.T) (term.SettingLine, term.T) {
+	switch t.Head() {
+	case QuotedActionC.Head():
+		action, err := ToActionC(d, t)
 		if err != nil {
-			return nil, nil, term.Make("asked to convert a list of lines in a setting, "+
-				"but received [] while converting even numbered argument [] to a template").T(err, l[2*i])
+			return nil, term.Make("asked to convert a line of a setting, "+
+				"but received [] while converting action []").T(err, t)
 		}
-		outputs = append(outputs, output)
-		if 2*i+1 < len(l) {
-			input, err := ToActionC(d, l[2*i+1])
-			if err != nil {
-				return nil, nil, term.Make("asked to convert a list of lines in a setting, "+
-					"but received [] while converting odd numbered argument [] to an action").T(err, l[2*i+1])
-			}
-			inputs = append(inputs, term.IdActionC(input))
-		}
+		return action.Id(), nil
+	case QuotedTemplate.Head():
+		return ToTemplate(d, t)
 	}
-	return outputs, inputs, nil
+	reduced, err := d.Answer(UnquoteSettingLine.T(t))
+	if err != nil {
+		return nil, err
+	}
+	return ToSettingLine(d, reduced)
 }
+
 func ToSetting(d dynamics.Dwimmer, t term.T) (*term.Setting, term.T) {
 	switch t.Head() {
 	case QuotedSetting.Head():
-		outputs, inputs, err := toSettingLines(d, t.Values()[0])
+		quotedLines, err := ToList(d, t.Values()[0])
 		if err != nil {
 			return nil, term.Make("asked to convert setting, "+
 				"but received [] while trying to convert its lines []").T(err, t.Values()[0])
 		}
-		return &term.Setting{outputs, inputs}, nil
+		result := term.Init()
+		for _, quotedLine := range quotedLines {
+			line, err := ToSettingLine(d, quotedLine)
+			if err != nil {
+				return nil, term.Make("asked to convert setting, "+
+					"but received [] while tryign to convert line []").T(err, quotedLine)
+			}
+			result = result.Append(line)
+		}
+		return result, nil
 	}
 	reduced, err := d.Answer(UnquoteSetting.T(t))
 	if err != nil {
@@ -410,35 +397,25 @@ func ToSetting(d dynamics.Dwimmer, t term.T) (*term.Setting, term.T) {
 func ToSettingT(d dynamics.Dwimmer, t term.T) (*term.SettingT, term.T) {
 	switch t.Head() {
 	case QuotedSettingT.Head():
-		outputs, inputs, err := toSettingLines(d, t.Values()[0])
+		setting, err := ToSetting(d, t.Values()[1])
 		if err != nil {
 			return nil, term.Make("asked to convert concrete setting, "+
-				"but received [] while trying to convert its lines []").T(err, t.Values()[0])
+				"but received [] while trying to convert its setting []").T(err, t.Values()[0])
 		}
-		id := term.IdSetting(&term.Setting{outputs, inputs})
 		args, err := ToList(d, t.Values()[1])
 		if err != nil {
 			return nil, term.Make("asked to convert concrete setting, "+
 				"but received [] while trying to convert its arguments []").T(err, t.Values()[1])
 		}
-		children, err := ToList(d, t.Values()[2])
 		result := &term.SettingT{
-			SettingId: id,
-			Args:      make([]term.T, len(args)),
-			Children:  make([]*term.SettingT, len(children)),
+			Setting: setting,
+			Args:    make([]term.T, len(args)),
 		}
 		for i, arg := range args {
 			result.Args[i], err = ToT(d, arg)
 			if err != nil {
 				return nil, term.Make("asked to convert concrete setting, "+
 					"but received [] while trying to convert its argument []").T(err, arg)
-			}
-		}
-		for i, child := range children {
-			result.Children[i], err = ToSettingT(d, child)
-			if err != nil {
-				return nil, term.Make("asked to convert concrete setting, "+
-					"but received [] while trying to convert its subordinate setwting []").T(err, child)
 			}
 		}
 		return result, nil

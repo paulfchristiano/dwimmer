@@ -6,12 +6,26 @@ import (
 	"github.com/paulfchristiano/dwimmer/term/intern"
 )
 
+//NOTE Setting is immutable, SettingS and SettingT are mutable
+//this seems good for performance, but may cause bugs...
+//Also, it exploits the fact that a setting can't change after going into a channel :(
+
 type Setting struct {
 	Id       SettingId
 	Previous *Setting
 	Last     SettingLine
 	Slots    int
 	Size     int
+}
+
+func (s *Setting) Rollback(n int) *Setting {
+	if n < 0 {
+		n = s.Size + n
+	}
+	if s.Size <= n {
+		return s
+	}
+	return s.Previous.Rollback(n)
 }
 
 func Init() *Setting {
@@ -22,7 +36,13 @@ func Init() *Setting {
 	}
 }
 
-func (s *Setting) Append(line SettingLine, slots int) *Setting {
+func (s *Setting) Append(line SettingLine, slotss ...int) *Setting {
+	var slots int
+	if len(slotss) == 0 {
+		slots = line.Slots()
+	} else {
+		slots = slotss[0]
+	}
 	id := new(intern.Id)
 	*id = intern.Id(s.Id)
 	lineId := line.LineId()
@@ -36,6 +56,13 @@ func (s *Setting) Append(line SettingLine, slots int) *Setting {
 	}
 }
 
+func (s *Setting) TotalSlots() int {
+	if s.Size == 0 {
+		return 0
+	}
+	return s.Slots + s.Previous.TotalSlots()
+}
+
 func (s *Setting) Lines() []SettingLine {
 	if s.Size == 0 {
 		return []SettingLine{}
@@ -47,10 +74,19 @@ func (s *Setting) Lines() []SettingLine {
 type SettingLine interface {
 	LineId() intern.Id
 	Pack(intern.Packed) intern.Packed
+	Slots() int
 }
 
 func (a ActionCId) LineId() intern.Id {
 	return intern.Id(a)
+}
+
+func (a ActionCId) Slots() int {
+	return 0
+}
+
+func (t TemplateId) Slots() int {
+	return t.Template().Slots()
 }
 
 func (a ActionCId) Pack(x intern.Packed) intern.Packed {
@@ -94,18 +130,19 @@ func InitS() *SettingS {
 	}
 }
 
-func (s *SettingS) AppendTemplate(t TemplateId, names []string) *SettingS {
+func (s *SettingS) AppendTemplate(t TemplateId, names ...string) *SettingS {
 	s.Setting = s.Setting.Append(t, len(names))
 	s.Names = append(s.Names, names...)
 	return s
 }
 
-func (s *SettingS) AppendActionC(a ActionCId) *SettingS {
-	s.Setting = s.Setting.Append(a, 0)
+func (s *SettingS) AppendAction(a ActionC) *SettingS {
+	id := a.Id()
+	s.Setting = s.Setting.Append(id, 0)
 	return s
 }
 
-func (s *SettingS) Lines(names []string) []string {
+func (s *SettingS) Lines() []string {
 	lines := s.Setting.Lines()
 	result := make([]string, 0)
 	index := 0
@@ -113,14 +150,13 @@ func (s *SettingS) Lines(names []string) []string {
 		switch line := line.(type) {
 		case ActionCId:
 			a := line.ActionC()
-			result = append(result, "")
-			result = append(result, fmt.Sprintf("%d>%s", i, a.Uninstantiate(names).String()))
+			result = append(result, "", fmt.Sprintf("%d< %s", i, a.Uninstantiate(s.Names).String()))
 		case TemplateId:
 			t := line.Template()
 			newindex := index + t.Slots()
 			result = append(result, fmt.Sprintf(
-				"%d<%s", i,
-				t.ShowWith(names[index:newindex]...),
+				"%d> %s", i,
+				t.ShowWith(s.Names[index:newindex]...),
 			))
 			index = newindex
 		default:
@@ -133,6 +169,13 @@ func (s *SettingS) Lines(names []string) []string {
 type SettingT struct {
 	Setting *Setting
 	Args    []T
+}
+
+func InitT() *SettingT {
+	return &SettingT{
+		Setting: Init(),
+		Args:    []T{},
+	}
 }
 
 func (s *SettingT) Copy() *SettingT {
@@ -150,25 +193,34 @@ func (s *SettingT) AppendTerm(t T) *SettingT {
 	return s
 }
 
-func (s *SettingT) AppendActionC(a ActionCId) *SettingT {
-	s.Setting = s.Setting.Append(a, 0)
+func (s *SettingT) AppendAction(a ActionC) *SettingT {
+	id := a.Id()
+	s.Setting = s.Setting.Append(id, 0)
 	return s
 }
 
-func (s *SettingS) Rollback(n int) {
+func (s *SettingS) Rollback(n int) *SettingS {
+	if n < 0 {
+		n = s.Setting.Size + n
+	}
 	drop := 0
 	for s.Setting.Size > n {
 		drop += s.Setting.Slots
 		s.Setting = s.Setting.Previous
 	}
 	s.Names = s.Names[:len(s.Names)-drop]
+	return s
 }
 
-func (s *SettingT) Rollback(n int) {
+func (s *SettingT) Rollback(n int) *SettingT {
+	if n < 0 {
+		n = s.Setting.Size + n
+	}
 	drop := 0
 	for s.Setting.Size > n {
 		drop += s.Setting.Slots
 		s.Setting = s.Setting.Previous
 	}
 	s.Args = s.Args[:len(s.Args)-drop]
+	return s
 }

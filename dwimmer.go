@@ -57,10 +57,16 @@ func RecoverStackError(e interface{}) {
 	}
 }
 
-func NewDwimmer() *Dwimmer {
+func NewDwimmer(impls ...ui.UIImplementer) *Dwimmer {
+	var impl ui.UIImplementer
+	if len(impls) == 1 {
+		impl = impls[0]
+	} else {
+		impl = &ui.Term{}
+	}
 	result := &Dwimmer{
 		Transitions:        dynamics.DefaultTransitions,
-		UIImplementer:      &ui.Term{},
+		UIImplementer:      impl,
 		StorageImplementer: storage.NewStorage("state"),
 	}
 	result.InitUI()
@@ -79,7 +85,7 @@ func (d *Dwimmer) Do(a term.ActionT, s *term.SettingT) term.T {
 		question := a.Args[0]
 		answer, setting := d.Ask(question)
 		s.AppendTerm(answer)
-		s.SetLastChild(setting)
+		s.AppendTerm(OpenChannel.T(term.Channel{setting}))
 		return nil
 	case term.View:
 		value := a.Args[0]
@@ -92,47 +98,34 @@ func (d *Dwimmer) Do(a term.ActionT, s *term.SettingT) term.T {
 	case term.Replace:
 		value := a.Args[0]
 		n := a.IntArgs[0]
-		var numToRemove int
-		if n == -1 {
-			numToRemove = 1
-		} else {
-			numToRemove = len(s.Children) - a.IntArgs[0]
-		}
-		var saveChild *term.SettingT
-		for i := 0; i < numToRemove; i++ {
-			if i == numToRemove-1 {
-				saveChild = s.LastChild()
-			}
-			s.RemoveAction()
-			s.RemoveTerm()
-		}
-		s.AppendTerm(value)
-		s.SetLastChild(saveChild)
+		s.Rollback(n).AppendTerm(value)
 		return nil
 	case term.Clarify:
-		question := a.Args[0]
-		target := s.Children[a.IntArgs[0]]
-		if target == nil {
-			s.AppendTerm(term.Make("there is no one here").T())
+		question := a.Args[1]
+		//TODO handle null pointers much better...
+		//(e.g. one part of an expression may refer to a delefted variable)
+		if a.Args[0] == nil {
+			s.AppendTerm(Closed.T())
 			return nil
 		}
+		channel, ok := a.Args[0].(term.Channel)
+		if !ok {
+			s.AppendTerm(NotAChannel.T())
+			return nil
+		}
+		target := channel.Instantiate()
 		target.AppendTerm(question)
 		result := d.Run(target)
 		s.AppendTerm(result)
+		s.AppendTerm(OpenChannel.T(term.Channel{target}))
 		return nil
 	case term.Correct:
 		n := a.IntArgs[0]
-		oldSetting := s.Setting().RollBack(n)
+		oldSetting := s.Setting.Rollback(n)
 		oldid := term.IdSetting(oldSetting)
-		s.AppendTerm(ElicitCorrection.T())
 		action := ElicitAction(d, oldid, true)
 		d.Save(oldid, dynamics.SimpleTransition{action})
 		s.AppendAction(action)
-		s.AppendTerm(core.OK.T())
-		return nil
-	case term.Close:
-		n := a.IntArgs[0]
-		s.Children[n] = nil
 		s.AppendTerm(core.OK.T())
 		return nil
 	case term.Delete:
@@ -145,14 +138,14 @@ func (d *Dwimmer) Do(a term.ActionT, s *term.SettingT) term.T {
 }
 
 var (
-	ElicitCorrection = term.Make("the next action you enter will be used as a correction")
+	DeleteNonVar = term.Make("only variables can be deleted")
 )
 
 func (d *Dwimmer) Run(setting *term.SettingT) term.T {
 	for {
-		transition, ok := d.Get(setting.Head())
+		transition, ok := d.Get(setting.Setting.Id)
 		if !ok {
-			actQ := ActionQ.T(represent.Setting(setting.Setting()))
+			actQ := ActionQ.T(represent.Setting(setting.Setting))
 			actA, err := d.Answer(actQ)
 			if err != nil {
 				return WhileAttempting.T(err)
@@ -233,7 +226,9 @@ func (d *Dwimmer) Ask(Q term.T) (term.T, *term.SettingT) {
 var (
 	GetAnswerQ      = term.Make("what is the answer to a question whose representation satisfies property []?")
 	WhileAttempting = term.Make("while trying to figure out what answer to produce, received the reply []")
-	Closed          = term.Make("a standin term returned when a deleted argument is viewed")
+	Closed          = term.Make("an error signal returned when a deleted argument is viewed")
+	OpenChannel     = term.Make("@[]")
+	NotAChannel     = term.Make("an error signal returned when a message is sent to an invalid target")
 )
 
 func (d *Dwimmer) Answer(q term.T) (term.T, term.T) {

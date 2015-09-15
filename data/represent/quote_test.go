@@ -4,12 +4,15 @@ import (
 	"testing"
 
 	"github.com/paulfchristiano/dwimmer"
+	"github.com/paulfchristiano/dwimmer/data/core"
 	"github.com/paulfchristiano/dwimmer/data/represent"
 	"github.com/paulfchristiano/dwimmer/term"
+	"github.com/paulfchristiano/dwimmer/ui"
 )
 
 func TestRepresentations(t *testing.T) {
-	d := dwimmer.Dwimmer()
+	d := dwimmer.NewDwimmer(ui.Dummy())
+	defer d.Close()
 	template := term.Make("term with argument [] and second half here")
 	template2, err := represent.ToTemplate(d, represent.Template(template))
 	if err != nil {
@@ -18,7 +21,7 @@ func TestRepresentations(t *testing.T) {
 	if template != template2 {
 		t.Errorf("%v != %v", template, template2)
 	}
-	setting := &term.Setting{Outputs: []term.TemplateId{template}, Inputs: []term.ActionCId{}}
+	setting := term.Init().Append(template)
 	setting2, err := represent.ToSetting(d, represent.Setting(setting))
 	if err != nil {
 		t.Errorf("received error %v", err)
@@ -26,13 +29,15 @@ func TestRepresentations(t *testing.T) {
 	if term.IdSetting(setting) != term.IdSetting(setting2) {
 		t.Errorf("%v != %v", setting, setting2)
 	}
-	action := term.ReturnC(term.Cr(3))
-	action2, err := represent.ToActionC(d, represent.ActionC(action))
-	if err != nil {
-		t.Errorf("received error %v", err)
-	}
-	if term.IdActionC(action) != term.IdActionC(action2) {
-		t.Errorf("%v != %v", action, action2)
+	actions := []term.ActionC{term.ReturnC(term.Cr(3)), term.ClarifyC(term.Cr(2), core.OK.C()), term.DeleteC(7)}
+	for _, action := range actions {
+		action2, err := represent.ToActionC(d, represent.ActionC(action))
+		if err != nil {
+			t.Errorf("received error %v", err)
+		}
+		if term.IdActionC(action) != term.IdActionC(action2) {
+			t.Errorf("%v != %v", action, action2)
+		}
 	}
 	stub := term.Make("stub")
 	tm := template.T(stub.T())

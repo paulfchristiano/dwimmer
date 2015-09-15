@@ -72,11 +72,7 @@ func (r *lexer) setActionResult(head string, e *Expr, n int) {
 		}
 		a = term.ReturnC(t)
 	case "ask", "inquire", "do":
-		if n == -1 {
-			a = term.AskC(t)
-		} else {
-			a = term.ClarifyC(t, n)
-		}
+		a = term.AskC(t)
 	case "view", "check", "inspect", "see":
 		if t == nil {
 			t = term.Cc(represent.Int(n))
@@ -84,22 +80,31 @@ func (r *lexer) setActionResult(head string, e *Expr, n int) {
 		a = term.ViewC(t)
 	case "replace", "rewrite", "change", "jump", "set":
 		a = term.ReplaceC(t, n)
-	case "clarify", "wonder", "followup", "push", "tell":
-		a = term.ClarifyC(t, n)
 	case "correct", "fix", "debug":
 		a = term.CorrectC(n)
 	case "close", "dismiss", "stop", "delete", "del", "remove":
-		if n == -1 {
-			c := toC(e)
-			switch c := c.(type) {
-			case term.ReferenceC:
-				a = term.DeleteC(c.Index)
-			}
-		} else {
-			a = term.CloseC(n)
+		c := toC(e)
+		switch c := c.(type) {
+		case term.ReferenceC:
+			a = term.DeleteC(c.Index)
 		}
 	default:
 		return
+	}
+	r.actionResult = &a
+}
+
+func (r *lexer) setTransitiveActionResult(head string, object string, e *Expr) {
+	var a term.ActionC
+	switch strings.ToLower(head) {
+	case "tell", "ask", "clarify", "push", "follow", "followup":
+		switch o := r.parseWord(object).(type) {
+		case exprTerm:
+			c := toC(e)
+			a = term.ClarifyC(o.val, c)
+		default:
+			return
+		}
 	}
 	r.actionResult = &a
 }
@@ -231,7 +236,7 @@ func (r *lexer) fsm(lval *yySymType, b bytes.Buffer, s state) int {
 func symbolToken(lval *yySymType, c rune) int {
 	lval.string = string(c)
 	switch c {
-	case '[', ']', '(', ')', '{', '}', ',', ':', '|', '"', '.':
+	case '[', ']', '(', ')', '{', '}', ',', ':', '|', '"', '.', '@':
 		return int(c)
 	default:
 		return SYMBOL
@@ -281,7 +286,9 @@ func alpha(c rune) bool {
 
 func symbol(c rune) bool {
 	switch c {
-	case '"', '[', ']', '(', ')', ':', ',', ';', '{', '}', '+', '!', '/', '*', '-', '^', '&', '|', '?', '.':
+	case '"', '[', ']', '(', ')', ':', ',', ';', '{', '}', '+':
+		return true
+	case '!', '/', '*', '-', '^', '&', '|', '?', '.', '@':
 		return true
 	default:
 		return false

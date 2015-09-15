@@ -9,7 +9,7 @@ import(
 
 %token <string> WHITE PROSE WORD SYMBOL MAKE
 %token <int> NUM
-%token <string> '[' ']' '(' ')' '{' '}' ',' ':' '|' '"' '?' '!' '-' '.'
+%token <string> '[' ']' '(' ')' '{' '}' ',' ':' '|' '"' '?' '!' '-' '.' '#' '@'
 %token WANT_ACTION WANT_TERM
 
 %type <expr> expr clauselist exprbracket
@@ -29,6 +29,7 @@ import(
 result: 
       WANT_ACTION WORD WHITE NUM WHITE expr {yylex.(*lexer).setActionResult($2, $6, $4)}
     | WANT_ACTION WORD WHITE expr {yylex.(*lexer).setActionResult($2, $4, -1)}
+    | WANT_ACTION WORD optionalwhitespace '@' optionalwhitespace WORD WHITE expr {yylex.(*lexer).setTransitiveActionResult($2, $6, $8)}
     | WANT_ACTION WORD {yylex.(*lexer).setActionResult($2, nil, -1)}
     | WANT_TERM expr {yylex.(*lexer).setTermResult($2)}
     | WANT_ACTION WORD WHITE NUM {{yylex.(*lexer).setActionResult($2, nil, $4)}}
@@ -53,6 +54,8 @@ int: NUM { $$ = exprTerm{term.ConstC{represent.Int($1)}} }
 word: WORD {$$ = yylex.(*lexer).parseWord($1)}
 
 quotedtext: text | WORD | quotedtext quotedtext {$$ = $1+$2}
+
+optionalwhitespace : | WHITE
 
 textblock: WHITE | PROSE | SYMBOL
          | ',' | ':' | '?' | '!' | '-' | '.'

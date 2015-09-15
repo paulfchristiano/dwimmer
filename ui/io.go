@@ -30,9 +30,29 @@ func (t *Term) Check() {
 
 }
 
+type dummy struct{}
+
+func Dummy() *dummy {
+	return &dummy{}
+}
+
+func (d *dummy) Println(s string) { fmt.Println(s) }
+func (d *dummy) Debug(s string)   { fmt.Println(s) }
+func (d *dummy) GetCh() rune      { panic("asked for input") }
+func (d *dummy) Clear()           {}
+func (d *dummy) InitUI()          {}
+func (d *dummy) CloseUI()         {}
+
+func (d *dummy) Readln(s string, hintss ...[]string) string { panic("asekd for input") }
+
 func (t *Term) Debug(s string) {
 	t.Println(s)
 	Flush()
+	_, height := termbox.Size()
+	if t.y > height {
+		t.GetCh()
+		t.Clear()
+	}
 }
 
 func (t *Term) Clear() {

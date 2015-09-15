@@ -56,7 +56,7 @@ func TestActionCID(t *testing.T) {
 		ReturnC(cs[0]),
 		ViewC(cs[1]),
 		AskC(cs[2]),
-		ClarifyC(cs[2], 2),
+		ClarifyC(cs[2], cs[1]),
 		ReplaceC(cs[1], -1),
 		CorrectC(3),
 	}

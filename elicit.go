@@ -43,7 +43,7 @@ func ShowSettingS(d dynamics.Dwimmer, settingS *term.SettingS) {
 //TODO only do this sometimes, or control better the length, or something...
 func GetHints(d dynamics.Dwimmer, s *term.SettingS, n int) []string {
 	result := []string{}
-	actions, _ := similarity.Suggestions(d, s.Setting(), n)
+	actions, _ := similarity.Suggestions(d, s.Setting, n)
 	for _, actionC := range actions {
 		actionS := actionC.Uninstantiate(s.Names)
 		result = append(result, actionS.String())
@@ -65,11 +65,14 @@ func ElicitAction(d dynamics.Dwimmer, id term.SettingId, hints bool) term.Action
 	hint_strings := []string{}
 	if hints {
 		hint_strings = GetHints(d, settingS, 6)
+		if len(hint_strings) > 0 {
+			d.Println("")
+		}
 		for i, hint := range hint_strings {
 			d.Println(fmt.Sprintf("%d. %s", i, hint))
 		}
-		d.Println("")
 	}
+	d.Println("")
 	for {
 		input := d.Readln(" < ", hint_strings)
 		a := parsing.ParseAction(input, settingS.Names)
@@ -94,7 +97,7 @@ func ElicitAction(d dynamics.Dwimmer, id term.SettingId, hints bool) term.Action
 		if a != nil {
 			for i, n := range a.IntArgs {
 				if n == -1 {
-					a.IntArgs[i] = len(setting.Outputs) - 1
+					a.IntArgs[i] = setting.Size - 1
 				}
 			}
 			return *a
@@ -122,6 +125,6 @@ func makeNames(n int) []string {
 }
 
 func addNames(s *term.Setting) *term.SettingS {
-	names := makeNames(s.Slots())
-	return &term.SettingS{term.IdSetting(s), names}
+	names := makeNames(s.TotalSlots())
+	return &term.SettingS{s, names}
 }
