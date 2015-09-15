@@ -2,7 +2,6 @@ package dynamics
 
 import (
 	"github.com/paulfchristiano/dwimmer/data/core"
-	"github.com/paulfchristiano/dwimmer/prediction/synonyms"
 	"github.com/paulfchristiano/dwimmer/storage/database"
 	"github.com/paulfchristiano/dwimmer/term"
 )
@@ -31,25 +30,23 @@ func (t SimpleTransition) Step(d Dwimmer, s *term.SettingT) term.T {
 type TransitionTable struct {
 	collection    database.C
 	table         map[term.SettingId]Transition
-	continuations map[term.SettingId](map[term.TemplateId]bool)
-	Synonyms      *synonyms.UF
+	continuations map[term.SettingId]([]*term.Setting)
 }
 
 type Transitions interface {
 	Save(term.SettingId, Transition)
 	Set(term.SettingId, Transition)
 	Get(term.SettingId) (Transition, bool)
-	Continuations(term.SettingId) []term.TemplateId
+	Continuations(term.SettingId) []*term.Setting
 }
 
-var DefaultTransitions = NewTransitionTable(database.Collection("transitions"))
+var DefaultTransitions = NewTransitionTable(database.Collection("newtransitions"))
 
 func NewTransitionTable(C database.C) *TransitionTable {
 	result := &TransitionTable{
 		collection:    C,
 		table:         make(map[term.SettingId]Transition),
-		continuations: make(map[term.SettingId](map[term.TemplateId]bool)),
-		Synonyms:      synonyms.NewUF(),
+		continuations: make(map[term.SettingId]([]*term.Setting)),
 	}
 	for _, transition := range C.All() {
 		settingRecord, ok := transition["key"]
@@ -73,31 +70,28 @@ func NewTransitionTable(C database.C) *TransitionTable {
 	return result
 }
 
-func (table *TransitionTable) AddContinuation(s term.SettingId, t term.TemplateId) {
-	continuations, ok := table.continuations[s]
-	if !ok {
-		continuations = make(map[term.TemplateId]bool)
-		table.continuations[s] = continuations
+func (table *TransitionTable) AddContinuation(s *term.Setting) {
+	if s.Size == 0 {
+		return
 	}
-	continuations[t] = true
+	continuations, ok := table.continuations[s.Previous.Id]
+	if !ok {
+		continuations = make([]*term.Setting, 0)
+		table.continuations[s.Previous.Id] = continuations
+	}
+	for _, c := range continuations {
+		if c.Last.LineId() == s.Last.LineId() {
+			return
+		}
+	}
+	continuations = append(continuations, s)
+	if s.Size > 0 {
+		table.AddContinuation(s.Previous)
+	}
 }
 
 func (table *TransitionTable) Set(s term.SettingId, t Transition) {
-	mostrecent := s.IdLast()
-	table.AddContinuation(
-		s.IdInit(),
-		mostrecent,
-	)
-	switch t := t.(type) {
-	case SimpleTransition:
-		switch t.Action.Act {
-		case term.Replace:
-			switch c := t.Action.Args[0].(type) {
-			case *term.CompoundC:
-				table.Equate(c.TemplateId, mostrecent)
-			}
-		}
-	}
+	table.AddContinuation(s.Setting().Rollback(-1))
 	table.table[s] = t
 }
 
@@ -119,7 +113,7 @@ func (t *TransitionTable) SaveSimpleC(s term.SettingId, a term.ActionC) {
 
 func (t *TransitionTable) SaveSimpleS(s *term.SettingS, a term.ActionS) *term.SettingS {
 	aC := a.Instantiate(s.Names)
-	t.SaveSimpleC(s.Head(), aC)
+	t.SaveSimpleC(s.Setting.Id, aC)
 	return s.Copy().AppendAction(aC)
 }
 
@@ -174,38 +168,9 @@ func AddNativeTo(table *TransitionTable, s *term.SettingS,
 		}
 		return result
 	}
-	table.Save(s.SettingId, NativeTransition(g))
+	table.Save(s.Setting.Id, NativeTransition(g))
 }
 
-func (table *TransitionTable) synset(t term.TemplateId) int {
-	return table.Synonyms.Find(int(t))
-}
-
-func (table *TransitionTable) Equate(s, t term.TemplateId) {
-	table.Synonyms.Union(int(s), int(t))
-}
-
-func (table *TransitionTable) Continuations(s term.SettingId) []term.TemplateId {
-	results := make([]term.TemplateId, 0)
-	for x, b := range table.continuations[s] {
-		if b {
-			results = append(results, x)
-		}
-	}
-	return results
-}
-
-func (table *TransitionTable) Alternatives(s term.SettingId) []term.TemplateId {
-	return table.SynonymousContinuations(s.IdInit(), s.IdLast())
-}
-
-func (table *TransitionTable) SynonymousContinuations(s term.SettingId, t term.TemplateId) []term.TemplateId {
-	rep := table.synset(t)
-	results := make([]term.TemplateId, 0)
-	for x, b := range table.continuations[s] {
-		if b && table.synset(x) == rep {
-			results = append(results, x)
-		}
-	}
-	return results
+func (table *TransitionTable) Continuations(id term.SettingId) []*term.Setting {
+	return table.continuations[id]
 }

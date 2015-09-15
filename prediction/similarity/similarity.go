@@ -18,7 +18,7 @@ func Suggestions(d dynamics.Dwimmer, s *term.Setting, n int) ([]term.ActionC, []
 	result := []term.ActionC{}
 	priorities := []float32{}
 	for i, other := range settings {
-		t, _ := d.Get(other.Id())
+		t, _ := d.Get(other.Id)
 		simple, isSimple := t.(dynamics.SimpleTransition)
 		if isSimple {
 			action := simple.Action
@@ -29,43 +29,53 @@ func Suggestions(d dynamics.Dwimmer, s *term.Setting, n int) ([]term.ActionC, []
 	return result, priorities
 }
 
-func match(a, b *term.Template) (float32, bool) {
+func match(a, b term.SettingLine) (float32, bool) {
 	if a.Slots() != b.Slots() {
 		return 0.0, false
 	}
-	return 1 - distance(a.String(), b.String()), true
+	switch a := a.(type) {
+	case term.ActionCId:
+		switch b := b.(type) {
+		case term.ActionCId:
+			return 1 - distance(a.String(), b.String()), true
+		default:
+			return 0.0, false
+		}
+	case term.TemplateId:
+		switch b := b.(type) {
+		case term.TemplateId:
+			return 1 - distance(a.String(), b.String()), true
+		default:
+			return 0.0, false
+		}
+	default:
+		return 0.0, false
+	}
 }
 
+//TODO the algorithms part could be more efficient, but I don't really care
 func analogies(d dynamics.Dwimmer, s *term.Setting, n int) ([]*term.Setting, []float32) {
-	if len(s.Inputs) == 0 {
-		return contenders(d, s.Outputs[0], n)
+	if s.Size == 1 {
+		return contenders(d, s.Last, n)
 	}
 
-	previousSetting := &term.Setting{Inputs: s.Inputs[:len(s.Inputs)-1], Outputs: s.Outputs[:len(s.Outputs)-1]}
-	lastAction := s.Inputs[len(s.Inputs)-1].ActionC()
-	lastTemplate := s.Outputs[len(s.Outputs)-1].Template()
+	previousSetting := s.Previous
+	lastLine := s.Last
 	previousAnalogies, previousPriorities := analogies(d, previousSetting, n+1)
 
 	possibilities, possiblePriorities := []*term.Setting{}, new(indexHeap)
 	i := 0
 	for j, priority := range previousPriorities {
 		analogy := previousAnalogies[j]
-		t, _ := d.Get(analogy.Id())
-		simple, isSimple := t.(dynamics.SimpleTransition)
-		if isSimple {
-			action := simple.Action
-			priority = priority * (1 - distance(action.String(), lastAction.String()))
-			analogy.AppendAction(action.Id())
-			for _, template := range d.Continuations(analogy.Id()) {
-				fit, canMatch := match(template.Template(), lastTemplate)
-				if canMatch {
-					possiblePriorities.Push(prioritized{
-						index:    i,
-						priority: priority * fit,
-					})
-					i++
-					possibilities = append(possibilities, analogy.Copy().AppendTemplate(template))
-				}
+		for _, setting := range d.Continuations(analogy.Id) {
+			fit, canMatch := match(setting.Last, lastLine)
+			if canMatch {
+				possiblePriorities.Push(prioritized{
+					index:    i,
+					priority: priority * fit,
+				})
+				i++
+				possibilities = append(possibilities, setting)
 			}
 		}
 	}
@@ -80,29 +90,24 @@ func analogies(d dynamics.Dwimmer, s *term.Setting, n int) ([]*term.Setting, []f
 	return result, priorities
 }
 
-func contenders(d dynamics.Dwimmer, t term.TemplateId, n int) ([]*term.Setting, []float32) {
-	allQs := d.Continuations(term.InitId)
-	templates, priorities := Top(t, allQs, n)
-	result := make([]*term.Setting, len(templates))
-	for i, template := range templates {
-		result[i] = &term.Setting{Inputs: []term.ActionCId{}, Outputs: []term.TemplateId{template}}
-	}
+func contenders(d dynamics.Dwimmer, l term.SettingLine, n int) ([]*term.Setting, []float32) {
+	allSettings := d.Continuations(term.Init().Id)
+	result, priorities := Top(l, allSettings, n)
 	return result, priorities
 }
 
-func Top(target term.TemplateId, options []term.TemplateId, n int) ([]term.TemplateId, []float32) {
+func Top(target term.SettingLine, options []*term.Setting, n int) ([]*term.Setting, []float32) {
 	h := makeHeap()
-	targetTemplate := target.Template()
 	ptms := make([]prioritized, 0)
-	for i, tmid := range options {
-		fit, canMatch := match(targetTemplate, tmid.Template())
+	for i, option := range options {
+		fit, canMatch := match(target, option.Last)
 		if canMatch {
 			ptms = append(ptms, prioritized{fit, i})
 		}
 	}
 	h.heap = ptms
 	heap.Init(h)
-	result := make([]term.TemplateId, 0)
+	result := make([]*term.Setting, 0)
 	priorities := make([]float32, 0)
 	for i := 0; i < n && h.Len() > 0; i++ {
 		next := heap.Pop(h).(prioritized)

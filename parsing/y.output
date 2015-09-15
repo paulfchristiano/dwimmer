@@ -18,6 +18,7 @@ state 1
 state 2
 	result:  WANT_ACTION.WORD WHITE NUM WHITE expr 
 	result:  WANT_ACTION.WORD WHITE expr 
+	result:  WANT_ACTION.WORD optionalwhitespace '@' optionalwhitespace WORD WHITE expr 
 	result:  WANT_ACTION.WORD 
 	result:  WANT_ACTION.WORD WHITE NUM 
 
@@ -27,9 +28,9 @@ state 2
 
 state 3
 	result:  WANT_TERM.expr 
-	clauselist: .    (7)
+	clauselist: .    (8)
 
-	.  reduce 7 (src line 38)
+	.  reduce 8 (src line 39)
 
 	expr  goto 5
 	clauselist  goto 6
@@ -37,373 +38,430 @@ state 3
 state 4
 	result:  WANT_ACTION WORD.WHITE NUM WHITE expr 
 	result:  WANT_ACTION WORD.WHITE expr 
-	result:  WANT_ACTION WORD.    (3)
+	result:  WANT_ACTION WORD.optionalwhitespace '@' optionalwhitespace WORD WHITE expr 
+	result:  WANT_ACTION WORD.    (4)
 	result:  WANT_ACTION WORD.WHITE NUM 
+	optionalwhitespace: .    (24)
 
 	WHITE  shift 7
-	.  reduce 3 (src line 32)
+	'@'  reduce 24 (src line 58)
+	.  reduce 4 (src line 33)
 
+	optionalwhitespace  goto 8
 
 state 5
-	result:  WANT_TERM expr.    (4)
+	result:  WANT_TERM expr.    (5)
 
-	.  reduce 4 (src line 33)
+	.  reduce 5 (src line 34)
 
 
 state 6
-	expr:  clauselist.    (6)
+	expr:  clauselist.    (7)
 	clauselist:  clauselist.clause 
 
-	WHITE  shift 20
-	PROSE  shift 21
-	WORD  shift 16
-	SYMBOL  shift 22
-	NUM  shift 14
-	'['  shift 18
-	'('  shift 19
-	','  shift 23
-	':'  shift 24
-	'"'  shift 15
-	'?'  shift 25
-	'!'  shift 26
-	'-'  shift 27
-	'.'  shift 28
-	.  reduce 6 (src line 36)
+	WHITE  shift 21
+	PROSE  shift 22
+	WORD  shift 17
+	SYMBOL  shift 23
+	NUM  shift 15
+	'['  shift 19
+	'('  shift 20
+	','  shift 24
+	':'  shift 25
+	'"'  shift 16
+	'?'  shift 26
+	'!'  shift 27
+	'-'  shift 28
+	'.'  shift 29
+	.  reduce 7 (src line 37)
 
-	exprbracket  goto 13
-	clause  goto 8
-	int  goto 9
-	str  goto 10
-	word  goto 11
-	text  goto 12
-	textblock  goto 17
+	exprbracket  goto 14
+	clause  goto 9
+	int  goto 10
+	str  goto 11
+	word  goto 12
+	text  goto 13
+	textblock  goto 18
 
-7: shift/reduce conflict (shift 29(0), red'n 7(0)) on NUM
+7: shift/reduce conflict (shift 30(0), red'n 8(0)) on NUM
 state 7
 	result:  WANT_ACTION WORD WHITE.NUM WHITE expr 
 	result:  WANT_ACTION WORD WHITE.expr 
 	result:  WANT_ACTION WORD WHITE.NUM 
-	clauselist: .    (7)
+	optionalwhitespace:  WHITE.    (25)
+	clauselist: .    (8)
 
-	NUM  shift 29
-	.  reduce 7 (src line 38)
+	NUM  shift 30
+	'@'  reduce 25 (src line 58)
+	.  reduce 8 (src line 39)
 
-	expr  goto 30
+	expr  goto 31
 	clauselist  goto 6
 
 state 8
-	clauselist:  clauselist clause.    (8)
+	result:  WANT_ACTION WORD optionalwhitespace.'@' optionalwhitespace WORD WHITE expr 
 
-	.  reduce 8 (src line 39)
+	'@'  shift 32
+	.  error
 
 
 state 9
-	clause:  int.    (9)
+	clauselist:  clauselist clause.    (9)
 
-	.  reduce 9 (src line 41)
+	.  reduce 9 (src line 40)
 
 
 state 10
-	clause:  str.    (10)
+	clause:  int.    (10)
 
-	.  reduce 10 (src line 41)
+	.  reduce 10 (src line 42)
 
 
 state 11
-	clause:  word.    (11)
+	clause:  str.    (11)
 
-	.  reduce 11 (src line 41)
+	.  reduce 11 (src line 42)
 
 
 state 12
-	clause:  text.    (12)
+	clause:  word.    (12)
 
 	.  reduce 12 (src line 42)
 
 
 state 13
-	clause:  exprbracket.    (13)
+	clause:  text.    (13)
 
 	.  reduce 13 (src line 43)
 
 
 state 14
-	int:  NUM.    (18)
+	clause:  exprbracket.    (14)
 
-	.  reduce 18 (src line 51)
+	.  reduce 14 (src line 44)
 
 
 state 15
+	int:  NUM.    (19)
+
+	.  reduce 19 (src line 52)
+
+
+state 16
 	str:  '\"'.quotedtext '\"' 
 	str:  '\"'.'\"' 
 
-	WHITE  shift 20
-	PROSE  shift 21
-	WORD  shift 34
-	SYMBOL  shift 22
-	','  shift 23
-	':'  shift 24
-	'"'  shift 32
-	'?'  shift 25
-	'!'  shift 26
-	'-'  shift 27
-	'.'  shift 28
+	WHITE  shift 21
+	PROSE  shift 22
+	WORD  shift 36
+	SYMBOL  shift 23
+	','  shift 24
+	':'  shift 25
+	'"'  shift 34
+	'?'  shift 26
+	'!'  shift 27
+	'-'  shift 28
+	'.'  shift 29
 	.  error
 
-	text  goto 33
-	textblock  goto 17
-	quotedtext  goto 31
+	text  goto 35
+	textblock  goto 18
+	quotedtext  goto 33
 
-state 16
-	word:  WORD.    (19)
-
-	.  reduce 19 (src line 53)
-
-
-17: shift/reduce conflict (shift 20(0), red'n 32(0)) on WHITE
-17: shift/reduce conflict (shift 21(0), red'n 32(0)) on PROSE
-17: shift/reduce conflict (shift 22(0), red'n 32(0)) on SYMBOL
-17: shift/reduce conflict (shift 23(0), red'n 32(0)) on ','
-17: shift/reduce conflict (shift 24(0), red'n 32(0)) on ':'
-17: shift/reduce conflict (shift 25(0), red'n 32(0)) on '?'
-17: shift/reduce conflict (shift 26(0), red'n 32(0)) on '!'
-17: shift/reduce conflict (shift 27(0), red'n 32(0)) on '-'
-17: shift/reduce conflict (shift 28(0), red'n 32(0)) on '.'
 state 17
-	text:  textblock.    (32)
+	word:  WORD.    (20)
+
+	.  reduce 20 (src line 54)
+
+
+18: shift/reduce conflict (shift 21(0), red'n 35(0)) on WHITE
+18: shift/reduce conflict (shift 22(0), red'n 35(0)) on PROSE
+18: shift/reduce conflict (shift 23(0), red'n 35(0)) on SYMBOL
+18: shift/reduce conflict (shift 24(0), red'n 35(0)) on ','
+18: shift/reduce conflict (shift 25(0), red'n 35(0)) on ':'
+18: shift/reduce conflict (shift 26(0), red'n 35(0)) on '?'
+18: shift/reduce conflict (shift 27(0), red'n 35(0)) on '!'
+18: shift/reduce conflict (shift 28(0), red'n 35(0)) on '-'
+18: shift/reduce conflict (shift 29(0), red'n 35(0)) on '.'
+state 18
+	text:  textblock.    (35)
 	text:  textblock.text 
 
-	WHITE  shift 20
-	PROSE  shift 21
-	SYMBOL  shift 22
-	','  shift 23
-	':'  shift 24
-	'?'  shift 25
-	'!'  shift 26
-	'-'  shift 27
-	'.'  shift 28
-	.  reduce 32 (src line 60)
+	WHITE  shift 21
+	PROSE  shift 22
+	SYMBOL  shift 23
+	','  shift 24
+	':'  shift 25
+	'?'  shift 26
+	'!'  shift 27
+	'-'  shift 28
+	'.'  shift 29
+	.  reduce 35 (src line 63)
 
-	text  goto 35
-	textblock  goto 17
-
-state 18
-	exprbracket:  '['.expr ']' 
-	clauselist: .    (7)
-
-	.  reduce 7 (src line 38)
-
-	expr  goto 36
-	clauselist  goto 6
+	text  goto 37
+	textblock  goto 18
 
 state 19
-	exprbracket:  '('.expr ')' 
-	clauselist: .    (7)
+	exprbracket:  '['.expr ']' 
+	clauselist: .    (8)
 
-	.  reduce 7 (src line 38)
+	.  reduce 8 (src line 39)
 
-	expr  goto 37
+	expr  goto 38
 	clauselist  goto 6
 
 state 20
-	textblock:  WHITE.    (23)
+	exprbracket:  '('.expr ')' 
+	clauselist: .    (8)
 
-	.  reduce 23 (src line 57)
+	.  reduce 8 (src line 39)
 
+	expr  goto 39
+	clauselist  goto 6
 
 state 21
-	textblock:  PROSE.    (24)
+	textblock:  WHITE.    (26)
 
-	.  reduce 24 (src line 57)
+	.  reduce 26 (src line 60)
 
 
 state 22
-	textblock:  SYMBOL.    (25)
+	textblock:  PROSE.    (27)
 
-	.  reduce 25 (src line 57)
+	.  reduce 27 (src line 60)
 
 
 state 23
-	textblock:  ','.    (26)
+	textblock:  SYMBOL.    (28)
 
-	.  reduce 26 (src line 58)
+	.  reduce 28 (src line 60)
 
 
 state 24
-	textblock:  ':'.    (27)
+	textblock:  ','.    (29)
 
-	.  reduce 27 (src line 58)
+	.  reduce 29 (src line 61)
 
 
 state 25
-	textblock:  '?'.    (28)
+	textblock:  ':'.    (30)
 
-	.  reduce 28 (src line 58)
+	.  reduce 30 (src line 61)
 
 
 state 26
-	textblock:  '!'.    (29)
+	textblock:  '?'.    (31)
 
-	.  reduce 29 (src line 58)
+	.  reduce 31 (src line 61)
 
 
 state 27
-	textblock:  '-'.    (30)
+	textblock:  '!'.    (32)
 
-	.  reduce 30 (src line 58)
+	.  reduce 32 (src line 61)
 
 
 state 28
-	textblock:  '.'.    (31)
+	textblock:  '-'.    (33)
 
-	.  reduce 31 (src line 58)
+	.  reduce 33 (src line 61)
 
 
 state 29
-	result:  WANT_ACTION WORD WHITE NUM.WHITE expr 
-	result:  WANT_ACTION WORD WHITE NUM.    (5)
+	textblock:  '.'.    (34)
 
-	WHITE  shift 38
-	.  reduce 5 (src line 34)
+	.  reduce 34 (src line 61)
 
 
 state 30
+	result:  WANT_ACTION WORD WHITE NUM.WHITE expr 
+	result:  WANT_ACTION WORD WHITE NUM.    (6)
+
+	WHITE  shift 40
+	.  reduce 6 (src line 35)
+
+
+state 31
 	result:  WANT_ACTION WORD WHITE expr.    (2)
 
 	.  reduce 2 (src line 31)
 
 
-state 31
+state 32
+	result:  WANT_ACTION WORD optionalwhitespace '@'.optionalwhitespace WORD WHITE expr 
+	optionalwhitespace: .    (24)
+
+	WHITE  shift 42
+	.  reduce 24 (src line 58)
+
+	optionalwhitespace  goto 41
+
+state 33
 	str:  '\"' quotedtext.'\"' 
 	quotedtext:  quotedtext.quotedtext 
 
-	WHITE  shift 20
-	PROSE  shift 21
-	WORD  shift 34
-	SYMBOL  shift 22
-	','  shift 23
-	':'  shift 24
-	'"'  shift 39
-	'?'  shift 25
-	'!'  shift 26
-	'-'  shift 27
-	'.'  shift 28
+	WHITE  shift 21
+	PROSE  shift 22
+	WORD  shift 36
+	SYMBOL  shift 23
+	','  shift 24
+	':'  shift 25
+	'"'  shift 43
+	'?'  shift 26
+	'!'  shift 27
+	'-'  shift 28
+	'.'  shift 29
 	.  error
 
-	text  goto 33
-	textblock  goto 17
-	quotedtext  goto 40
+	text  goto 35
+	textblock  goto 18
+	quotedtext  goto 44
 
-state 32
-	str:  '\"' '\"'.    (17)
+state 34
+	str:  '\"' '\"'.    (18)
+
+	.  reduce 18 (src line 50)
+
+
+state 35
+	quotedtext:  text.    (21)
+
+	.  reduce 21 (src line 56)
+
+
+state 36
+	quotedtext:  WORD.    (22)
+
+	.  reduce 22 (src line 56)
+
+
+state 37
+	text:  textblock text.    (36)
+
+	.  reduce 36 (src line 64)
+
+
+state 38
+	exprbracket:  '[' expr.']' 
+
+	']'  shift 45
+	.  error
+
+
+state 39
+	exprbracket:  '(' expr.')' 
+
+	')'  shift 46
+	.  error
+
+
+state 40
+	result:  WANT_ACTION WORD WHITE NUM WHITE.expr 
+	clauselist: .    (8)
+
+	.  reduce 8 (src line 39)
+
+	expr  goto 47
+	clauselist  goto 6
+
+state 41
+	result:  WANT_ACTION WORD optionalwhitespace '@' optionalwhitespace.WORD WHITE expr 
+
+	WORD  shift 48
+	.  error
+
+
+state 42
+	optionalwhitespace:  WHITE.    (25)
+
+	.  reduce 25 (src line 58)
+
+
+state 43
+	str:  '\"' quotedtext '\"'.    (17)
 
 	.  reduce 17 (src line 49)
 
 
-state 33
-	quotedtext:  text.    (20)
-
-	.  reduce 20 (src line 55)
-
-
-state 34
-	quotedtext:  WORD.    (21)
-
-	.  reduce 21 (src line 55)
-
-
-state 35
-	text:  textblock text.    (33)
-
-	.  reduce 33 (src line 61)
-
-
-state 36
-	exprbracket:  '[' expr.']' 
-
-	']'  shift 41
-	.  error
-
-
-state 37
-	exprbracket:  '(' expr.')' 
-
-	')'  shift 42
-	.  error
-
-
-state 38
-	result:  WANT_ACTION WORD WHITE NUM WHITE.expr 
-	clauselist: .    (7)
-
-	.  reduce 7 (src line 38)
-
-	expr  goto 43
-	clauselist  goto 6
-
-state 39
-	str:  '\"' quotedtext '\"'.    (16)
-
-	.  reduce 16 (src line 48)
-
-
-40: shift/reduce conflict (shift 20(0), red'n 22(0)) on WHITE
-40: shift/reduce conflict (shift 21(0), red'n 22(0)) on PROSE
-40: shift/reduce conflict (shift 34(0), red'n 22(0)) on WORD
-40: shift/reduce conflict (shift 22(0), red'n 22(0)) on SYMBOL
-40: shift/reduce conflict (shift 23(0), red'n 22(0)) on ','
-40: shift/reduce conflict (shift 24(0), red'n 22(0)) on ':'
-40: shift/reduce conflict (shift 25(0), red'n 22(0)) on '?'
-40: shift/reduce conflict (shift 26(0), red'n 22(0)) on '!'
-40: shift/reduce conflict (shift 27(0), red'n 22(0)) on '-'
-40: shift/reduce conflict (shift 28(0), red'n 22(0)) on '.'
-state 40
+44: shift/reduce conflict (shift 21(0), red'n 23(0)) on WHITE
+44: shift/reduce conflict (shift 22(0), red'n 23(0)) on PROSE
+44: shift/reduce conflict (shift 36(0), red'n 23(0)) on WORD
+44: shift/reduce conflict (shift 23(0), red'n 23(0)) on SYMBOL
+44: shift/reduce conflict (shift 24(0), red'n 23(0)) on ','
+44: shift/reduce conflict (shift 25(0), red'n 23(0)) on ':'
+44: shift/reduce conflict (shift 26(0), red'n 23(0)) on '?'
+44: shift/reduce conflict (shift 27(0), red'n 23(0)) on '!'
+44: shift/reduce conflict (shift 28(0), red'n 23(0)) on '-'
+44: shift/reduce conflict (shift 29(0), red'n 23(0)) on '.'
+state 44
 	quotedtext:  quotedtext.quotedtext 
-	quotedtext:  quotedtext quotedtext.    (22)
+	quotedtext:  quotedtext quotedtext.    (23)
 
-	WHITE  shift 20
-	PROSE  shift 21
-	WORD  shift 34
-	SYMBOL  shift 22
-	','  shift 23
-	':'  shift 24
-	'?'  shift 25
-	'!'  shift 26
-	'-'  shift 27
-	'.'  shift 28
-	.  reduce 22 (src line 55)
+	WHITE  shift 21
+	PROSE  shift 22
+	WORD  shift 36
+	SYMBOL  shift 23
+	','  shift 24
+	':'  shift 25
+	'?'  shift 26
+	'!'  shift 27
+	'-'  shift 28
+	'.'  shift 29
+	.  reduce 23 (src line 56)
 
-	text  goto 33
-	textblock  goto 17
-	quotedtext  goto 40
+	text  goto 35
+	textblock  goto 18
+	quotedtext  goto 44
 
-state 41
-	exprbracket:  '[' expr ']'.    (14)
-
-	.  reduce 14 (src line 45)
-
-
-state 42
-	exprbracket:  '(' expr ')'.    (15)
+state 45
+	exprbracket:  '[' expr ']'.    (15)
 
 	.  reduce 15 (src line 46)
 
 
-state 43
+state 46
+	exprbracket:  '(' expr ')'.    (16)
+
+	.  reduce 16 (src line 47)
+
+
+state 47
 	result:  WANT_ACTION WORD WHITE NUM WHITE expr.    (1)
 
 	.  reduce 1 (src line 29)
 
 
-25 terminals, 12 nonterminals
-34 grammar rules, 44/2000 states
+state 48
+	result:  WANT_ACTION WORD optionalwhitespace '@' optionalwhitespace WORD.WHITE expr 
+
+	WHITE  shift 49
+	.  error
+
+
+state 49
+	result:  WANT_ACTION WORD optionalwhitespace '@' optionalwhitespace WORD WHITE.expr 
+	clauselist: .    (8)
+
+	.  reduce 8 (src line 39)
+
+	expr  goto 50
+	clauselist  goto 6
+
+state 50
+	result:  WANT_ACTION WORD optionalwhitespace '@' optionalwhitespace WORD WHITE expr.    (3)
+
+	.  reduce 3 (src line 32)
+
+
+27 terminals, 13 nonterminals
+37 grammar rules, 51/2000 states
 20 shift/reduce, 0 reduce/reduce conflicts reported
-61 working sets used
-memory: parser 25/30000
+62 working sets used
+memory: parser 29/30000
 30 extra closures
-63 shift entries, 1 exceptions
-18 goto entries
-11 entries saved by goto default
-Optimizer space used: output 97/30000
-97 table entries, 16 zero
-maximum spread: 25, maximum offset: 38
+67 shift entries, 3 exceptions
+21 goto entries
+12 entries saved by goto default
+Optimizer space used: output 99/30000
+99 table entries, 11 zero
+maximum spread: 27, maximum offset: 49

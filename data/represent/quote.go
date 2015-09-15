@@ -15,20 +15,21 @@ var (
 	QuotedNil = term.Make("nothing")
 
 	QuotedSetting  = term.Make("the setting with the list of lines []")
-	QuotedSettingT = term.Make("the setting with the list of lines [], " +
-		"list of arguments [], and list of subordinate settings []")
+	QuotedSettingT = term.Make("the concrete setting with template [] " +
+		"and list of arguments []")
 	QuotedTemplate = term.Make("the term template that has parts []")
 
-	QuotedReturn  = term.Make("the action that returns the term constructed by instantiating []")
-	QuotedView    = term.Make("the action that views the term constructed by instantiating []")
-	QuotedAsk     = term.Make("the action that asks the question constructed by instantiating []")
-	QuotedReplace = term.Make("the action that replaces output [] with the term constructed " +
-		"by instantiating []")
-	QuotedClarify = term.Make("the action that asks the subsetting that produced output [] " +
-		"the clarifying question constructed by instantiating []")
-	QuotedCorrect = term.Make("the action that prompts the user to correct action []")
-	QuotedClose   = term.Make("the action that closes the channel in position []")
-	QuotedDelete  = term.Make("the action that deletes the term referenced by the constructor []")
+	ActionLookup = map[term.Action]term.TemplateId{
+		term.Return: term.Make("the parametrized action that returns the instantiation of its first argument"),
+		term.View:   term.Make("the parametrized action that views the instantiation of its first argument"),
+		term.Ask:    term.Make("the parametrized action that asks the instantiation of its first argument"),
+		term.Replace: term.Make("the parametrized action that replaces the line given by its first index with " +
+			"with the instantiation of its first argument"),
+		term.Clarify: term.Make("the parametrized action that sends the instantiation of its first argument " +
+			"to the instantiation of its second argument"),
+		term.Correct: term.Make("the parametrized action that prompts the user to correct its first index"),
+		term.Delete:  term.Make("the action that deletes the variable indexed by its first index"),
+	}
 
 	QuotedCompoundC = term.Make("the constructor that has template [] and arguments formed by " +
 		"instantiating each constructor in []")
@@ -45,6 +46,8 @@ var (
 	QuotedSimpleTransition = term.Make("the transition that takes the action []")
 	QuotedNativeTransition = term.Make("the transition that applies the Go function [] " +
 		"to the Dwimmer object evolving the current setting, and a pointer to that setting")
+
+	QuotedActionC = term.Make("the action that performs [] with arguments [] and indices []")
 )
 
 func SettingT(s *term.SettingT) term.T {
@@ -52,29 +55,30 @@ func SettingT(s *term.SettingT) term.T {
 		return QuotedNil.T()
 	}
 	args := make([]term.T, len(s.Args))
-	children := make([]term.T, len(s.Children))
 	for i, arg := range s.Args {
 		args[i] = T(arg)
 	}
-	for i, child := range s.Children {
-		children[i] = SettingT(child)
-	}
-	return QuotedSettingT.T(settingLines(s.Setting()), List(args), List(children))
+	return QuotedSettingT.T(Setting(s.Setting), List(args))
 }
 
-func settingLines(s *term.Setting) term.T {
-	l := make([]term.T, 0)
-	for i, output := range s.Outputs {
-		l = append(l, Template(output))
-		if i < len(s.Inputs) {
-			l = append(l, ActionC(s.Inputs[i].ActionC()))
-		}
+func SettingLine(l term.SettingLine) term.T {
+	switch l := l.(type) {
+	case term.TemplateId:
+		return Template(l)
+	case term.ActionCId:
+		return ActionC(l.ActionC())
+	default:
+		panic("quoting unknown type of setting line!")
 	}
-	return List(l)
 }
 
 func Setting(s *term.Setting) term.T {
-	return QuotedSetting.T(settingLines(s))
+	lines := s.Lines()
+	quotedLines := make([]term.T, len(lines))
+	for i, line := range lines {
+		quotedLines[i] = SettingLine(line)
+	}
+	return QuotedSetting.T(List(quotedLines))
 }
 
 func Template(temp term.TemplateId) term.T {
@@ -87,25 +91,19 @@ func Template(temp term.TemplateId) term.T {
 }
 
 func ActionC(a term.ActionC) term.T {
-	switch a.Act {
-	case term.Return:
-		return QuotedReturn.T(C(a.Args[0]))
-	case term.View:
-		return QuotedView.T(C(a.Args[0]))
-	case term.Ask:
-		return QuotedAsk.T(C(a.Args[0]))
-	case term.Replace:
-		return QuotedReplace.T(C(a.Args[0]), Int(a.IntArgs[0]))
-	case term.Clarify:
-		return QuotedClarify.T(C(a.Args[0]), Int(a.IntArgs[0]))
-	case term.Correct:
-		return QuotedCorrect.T(Int(a.IntArgs[0]))
-	case term.Close:
-		return QuotedClose.T(Int(a.IntArgs[0]))
-	case term.Delete:
-		return QuotedDelete.T(Int(a.IntArgs[0]))
+	args := make([]term.T, len(a.Args))
+	for i, arg := range a.Args {
+		args[i] = C(arg)
 	}
-	panic("quoting an unknown type of action")
+	intargs := make([]term.T, len(a.IntArgs))
+	for i, intarg := range a.IntArgs {
+		intargs[i] = Int(intarg)
+	}
+	return QuotedActionC.T(Action(a.Act), List(args), List(intargs))
+}
+
+func Action(a term.Action) term.T {
+	return ActionLookup[a].T()
 }
 
 func Transition(t dynamics.Transition) term.T {

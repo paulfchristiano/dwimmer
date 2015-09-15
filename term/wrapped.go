@@ -7,6 +7,9 @@ import (
 
 type Str string
 type Int int
+type Channel struct {
+	Setting *SettingT
+}
 type Quoted struct {
 	Value T
 }
@@ -19,7 +22,26 @@ var (
 	intHead     = Make("an integer represented by a Go object")
 	quotedHead  = Make("a term represented by a Go object")
 	wrapperHead = Make("a Go object")
+	channelHead = Make("a channel to a state represented by a Go object")
 )
+
+//Channels
+
+func (c Channel) Head() TemplateId {
+	return channelHead
+}
+
+func (c Channel) String() string {
+	return fmt.Sprintf("->")
+}
+
+func (c Channel) Values() []T {
+	return []T{}
+}
+
+func (c Channel) Instantiate() *SettingT {
+	return c.Setting.Copy()
+}
 
 //Strings
 

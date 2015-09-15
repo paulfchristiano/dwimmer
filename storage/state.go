@@ -33,7 +33,7 @@ func (s *DBStorage) CloseStorage() {
 }
 
 func NewStorage(name string) *DBStorage {
-	collection := database.Collection("terms")
+	collection := database.Collection("newterms")
 	stateRecord := collection.Get(name)
 	state := term.Make("an uninitialized state").T()
 	if stateRecord != nil {

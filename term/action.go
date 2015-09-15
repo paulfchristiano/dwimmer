@@ -15,7 +15,6 @@ const (
 	Clarify
 	Correct
 	Delete
-	Close
 )
 
 func (a Action) String() string {
@@ -29,13 +28,11 @@ func (a Action) String() string {
 	case Replace:
 		return "replace"
 	case Clarify:
-		return "tell"
+		return "ask@"
 	case Correct:
 		return "correct"
 	case Delete:
 		return "del"
-	case Close:
-		return "close"
 	}
 	panic("unknown type of action")
 }
@@ -126,14 +123,11 @@ func ViewS(s S) ActionS {
 func ReplaceS(s S, n int) ActionS {
 	return ActionS{Replace, []S{s}, []int{n}}
 }
-func ClarifyS(s S, n int) ActionS {
-	return ActionS{Clarify, []S{s}, []int{n}}
+func ClarifyS(s, t S) ActionS {
+	return ActionS{Clarify, []S{s, t}, []int{}}
 }
 func CorrectS(n int) ActionS {
 	return ActionS{Correct, []S{}, []int{n}}
-}
-func CloseS(n int) ActionS {
-	return ActionS{Close, []S{}, []int{n}}
 }
 func DeleteS(n int) ActionS {
 	return ActionS{Delete, []S{}, []int{n}}
@@ -150,14 +144,11 @@ func ViewC(c C) ActionC {
 func ReplaceC(c C, n int) ActionC {
 	return ActionC{Replace, []C{c}, []int{n}}
 }
-func ClarifyC(c C, n int) ActionC {
-	return ActionC{Clarify, []C{c}, []int{n}}
+func ClarifyC(c, d C) ActionC {
+	return ActionC{Clarify, []C{c, d}, []int{}}
 }
 func CorrectC(n int) ActionC {
 	return ActionC{Correct, []C{}, []int{n}}
-}
-func CloseC(n int) ActionC {
-	return ActionC{Close, []C{}, []int{n}}
 }
 func DeleteC(n int) ActionC {
 	return ActionC{Delete, []C{}, []int{n}}
@@ -174,14 +165,11 @@ func ViewT(t T) ActionT {
 func ReplaceT(t T, n int) ActionT {
 	return ActionT{Replace, []T{t}, []int{n}}
 }
-func ClarifyT(t T, n int) ActionT {
-	return ActionT{Clarify, []T{t}, []int{n}}
+func ClarifyT(t, u T) ActionT {
+	return ActionT{Clarify, []T{t, u}, []int{}}
 }
 func CorrectT(n int) ActionT {
 	return ActionT{Correct, []T{}, []int{n}}
-}
-func CloseT(n int) ActionT {
-	return ActionT{Close, []T{}, []int{n}}
 }
 func DeleteT(n int) ActionT {
 	return ActionT{Delete, []T{}, []int{n}}

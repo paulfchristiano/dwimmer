@@ -1,163 +1,226 @@
 package term
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/paulfchristiano/dwimmer/term/intern"
+)
+
+//NOTE Setting is immutable, SettingS and SettingT are mutable
+//this seems good for performance, but may cause bugs...
+//Also, it exploits the fact that a setting can't change after going into a channel :(
 
 type Setting struct {
-	Outputs []TemplateId
-	Inputs  []ActionCId
+	Id       SettingId
+	Previous *Setting
+	Last     SettingLine
+	Slots    int
+	Size     int
 }
 
-func (s *Setting) RollBack(n int) *Setting {
-	return &Setting{
-		s.Outputs[:n],
-		s.Inputs[:n-1],
+func (s *Setting) Rollback(n int) *Setting {
+	if n < 0 {
+		n = s.Size + n
 	}
-}
-
-func (s *Setting) Slots() int {
-	result := 0
-	for _, output := range s.Outputs {
-		result += output.Template().Slots()
+	if s.Size <= n {
+		return s
 	}
-	return result
-}
-
-func (s *Setting) Question() *Template {
-	return s.Outputs[0].Template()
-}
-
-func (id SettingId) Head() SettingId {
-	return id
-}
-
-//TODO I could make the initialization faster if the singleton setting
-//had the same ID as the starting term, which is already in hand when initializing...
-var InitId = IdSetting(Init())
-
-func InitT() *SettingT {
-	return &SettingT{InitId, make([]*SettingT, 0), make([]T, 0)}
-}
-
-func InitS() *SettingS {
-	return &SettingS{InitId, make([]string, 0)}
+	return s.Previous.Rollback(n)
 }
 
 func Init() *Setting {
-	return &Setting{make([]TemplateId, 0), make([]ActionCId, 0)}
+	id := new(intern.Id)
+	id.Empty()
+	return &Setting{
+		Id: SettingId(*id),
+	}
 }
 
-type SettingT struct {
-	SettingId
-	Children []*SettingT
-	Args     []T
+func (s *Setting) Append(line SettingLine, slotss ...int) *Setting {
+	var slots int
+	if len(slotss) == 0 {
+		slots = line.Slots()
+	} else {
+		slots = slotss[0]
+	}
+	id := new(intern.Id)
+	*id = intern.Id(s.Id)
+	lineId := line.LineId()
+	id.Append(&lineId)
+	return &Setting{
+		Previous: s,
+		Last:     line,
+		Slots:    slots,
+		Size:     s.Size + 1,
+		Id:       SettingId(*id),
+	}
 }
+
+func (s *Setting) TotalSlots() int {
+	if s.Size == 0 {
+		return 0
+	}
+	return s.Slots + s.Previous.TotalSlots()
+}
+
+func (s *Setting) Lines() []SettingLine {
+	if s.Size == 0 {
+		return []SettingLine{}
+	}
+	previous := s.Previous.Lines()
+	return append(previous, s.Last)
+}
+
+type SettingLine interface {
+	LineId() intern.Id
+	Pack(intern.Packed) intern.Packed
+	Slots() int
+}
+
+func (a ActionCId) LineId() intern.Id {
+	return intern.Id(a)
+}
+
+func (a ActionCId) Slots() int {
+	return 0
+}
+
+func (t TemplateId) Slots() int {
+	return t.Template().Slots()
+}
+
+func (a ActionCId) Pack(x intern.Packed) intern.Packed {
+	switch x := x.(type) {
+	case *intern.Id:
+		*x = intern.Id(a)
+	}
+	return a.ActionC().Pack(x)
+}
+
+func (a TemplateId) Pack(x intern.Packed) intern.Packed {
+	switch x := x.(type) {
+	case *intern.Id:
+		*x = intern.Id(a)
+	}
+	return a.Template().Pack(x)
+}
+
+func (t TemplateId) LineId() intern.Id {
+	return intern.Id(t)
+}
+
 type SettingS struct {
-	SettingId
-	Names []string
-}
-
-func (s *Setting) Id() SettingId {
-	return IdSetting(s)
+	Setting *Setting
+	Names   []string
 }
 
 func (s *SettingS) Copy() *SettingS {
-	result := &SettingS{s.SettingId, make([]string, len(s.Names))}
+	result := &SettingS{
+		Setting: s.Setting,
+		Names:   make([]string, len(s.Names)),
+	}
 	copy(result.Names, s.Names)
 	return result
 }
 
-func (s *Setting) Copy() *Setting {
-	result := &Setting{
-		Inputs:  make([]ActionCId, len(s.Inputs)),
-		Outputs: make([]TemplateId, len(s.Outputs)),
+func InitS() *SettingS {
+	return &SettingS{
+		Setting: Init(),
+		Names:   []string{},
 	}
-	copy(result.Inputs, s.Inputs)
-	copy(result.Outputs, s.Outputs)
-	return result
 }
 
-func (s *Setting) AppendAction(a ActionCId) *Setting {
-	s.Inputs = append(s.Inputs, a)
-	return s
-}
-
-func (s *Setting) AppendTemplate(t TemplateId) *Setting {
-	s.Outputs = append(s.Outputs, t)
-	return s
-}
-
-func (s *SettingS) AppendAction(a ActionC) *SettingS {
-	if len(s.Setting().Outputs) <= len(s.Setting().Inputs) {
-		panic("appending action to something that already ends in an action!")
-	}
-	s.SettingId = s.SettingId.ExtendByAction(IdActionC(a))
-	return s
-}
-
-func (s *SettingS) AppendTemplate(a TemplateId, names ...string) *SettingS {
-	if len(s.Setting().Outputs) > len(s.Setting().Inputs) {
-		panic("appending template to something that already ends in a template!")
-	}
-	if a.Template().Slots() != len(names) {
-		panic(fmt.Sprintf("appending template %v with names %v", a.Template(), names))
-	}
-	s.SettingId = s.SettingId.ExtendByTemplate(a)
+func (s *SettingS) AppendTemplate(t TemplateId, names ...string) *SettingS {
+	s.Setting = s.Setting.Append(t, len(names))
 	s.Names = append(s.Names, names...)
 	return s
 }
 
-func (s *SettingT) SetLastChild(child *SettingT) {
-	s.Children[len(s.Children)-1] = child
-}
-
-func (s *SettingT) LastChild() *SettingT {
-	return s.Children[len(s.Children)-1]
-}
-
-func (s *SettingT) AppendTerm(t T) *SettingT {
-	s.SettingId = s.SettingId.ExtendByTemplate(t.Head())
-	s.Children = append(s.Children, nil)
-	switch t := t.(type) {
-	case *CompoundT:
-		s.Args = append(s.Args, t.args...)
-	}
-	return s
-}
-
-func (s *SettingT) AppendAction(a ActionC) *SettingT {
-	s.SettingId = s.SettingId.ExtendByAction(IdActionC(a))
-	return s
-}
-
-func (s *SettingT) RemoveTerm() *SettingT {
-	outputs := s.Setting().Outputs
-	last := outputs[len(outputs)-1].Template()
-	s.Args = s.Args[:len(s.Args)-last.Slots()]
-	s.Children = s.Children[:len(s.Children)-1]
-	s.SettingId = s.IdInit()
-	return s
-}
-
-func (s *SettingT) RemoveAction() *SettingT {
-	s.SettingId = s.IdInit()
+func (s *SettingS) AppendAction(a ActionC) *SettingS {
+	id := a.Id()
+	s.Setting = s.Setting.Append(id, 0)
 	return s
 }
 
 func (s *SettingS) Lines() []string {
+	lines := s.Setting.Lines()
 	result := make([]string, 0)
-	inputs := s.Setting().Inputs
-	outputs := s.Setting().Outputs
-	used := 0
-	for i, outputId := range outputs {
-		output := outputId.Template()
-		slots := output.Slots()
-		result = append(result, fmt.Sprintf("%d> %s", i, output.ShowWith(s.Names[used:used+slots]...)))
-		result = append(result, "")
-		used = used + slots
-		if i < len(inputs) {
-			input := inputs[i].ActionC()
-			result = append(result, fmt.Sprintf("%d< %v", i+1, input.Uninstantiate(s.Names)))
+	index := 0
+	for i, line := range lines {
+		switch line := line.(type) {
+		case ActionCId:
+			a := line.ActionC()
+			result = append(result, "", fmt.Sprintf("%d< %s", i, a.Uninstantiate(s.Names).String()))
+		case TemplateId:
+			t := line.Template()
+			newindex := index + t.Slots()
+			result = append(result, fmt.Sprintf(
+				"%d> %s", i,
+				t.ShowWith(s.Names[index:newindex]...),
+			))
+			index = newindex
+		default:
+			panic("Unknown kind of line!")
 		}
 	}
 	return result
+}
+
+type SettingT struct {
+	Setting *Setting
+	Args    []T
+}
+
+func InitT() *SettingT {
+	return &SettingT{
+		Setting: Init(),
+		Args:    []T{},
+	}
+}
+
+func (s *SettingT) Copy() *SettingT {
+	result := &SettingT{
+		Setting: s.Setting,
+		Args:    make([]T, len(s.Args)),
+	}
+	copy(result.Args, s.Args)
+	return result
+}
+
+func (s *SettingT) AppendTerm(t T) *SettingT {
+	s.Setting = s.Setting.Append(t.Head(), len(t.Values()))
+	s.Args = append(s.Args, t.Values()...)
+	return s
+}
+
+func (s *SettingT) AppendAction(a ActionC) *SettingT {
+	id := a.Id()
+	s.Setting = s.Setting.Append(id, 0)
+	return s
+}
+
+func (s *SettingS) Rollback(n int) *SettingS {
+	if n < 0 {
+		n = s.Setting.Size + n
+	}
+	drop := 0
+	for s.Setting.Size > n {
+		drop += s.Setting.Slots
+		s.Setting = s.Setting.Previous
+	}
+	s.Names = s.Names[:len(s.Names)-drop]
+	return s
+}
+
+func (s *SettingT) Rollback(n int) *SettingT {
+	if n < 0 {
+		n = s.Setting.Size + n
+	}
+	drop := 0
+	for s.Setting.Size > n {
+		drop += s.Setting.Slots
+		s.Setting = s.Setting.Previous
+	}
+	s.Args = s.Args[:len(s.Args)-drop]
+	return s
 }

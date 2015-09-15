@@ -6,21 +6,21 @@ To start REPL: with mongod running locally, run repl
 
 ### Commands:
 
-- view * ("view x"): View the variable with name *.
-- ask * ("ask what is 3 + 4?"): Ask the question *.
-- reply * ("reply 7"): Send the message * to your parent process.
-- tell N * ("tell 2 how reliable is that answer?"): Send the message * to the process that answered question N. Return its reply.
-- delete * ("delete x"): Delete the variable named x. If there are no remaining references to that term, the GC can free it.
-- close N ("close 7"): Close the process that answered question 7, deleting the references it holds.
-- replace N * ("replace 6 the answer to the question is [A]"): 
-Replaces output #N with *, removing all of the following inputs and outputs.
+- view X ("view x"): View the variable with name X.
+- ask Q ("ask what is 3 + 4?"): Ask the question Q. 
+The return values are the result and @C, where C is a channel that can be used for follow-up questions.
+- reply A ("reply 7"): Send the message A to your parent process.
+- ask@C Q ("ask@y how reliable is that answer?"): Send the message Q to the channel bound to X.
+- delete X ("delete x"): Delete the variable named X. If there are no remaining references to that term, the GC can free it.
+- replace N X ("replace 6 the answer to the question is [A]"): 
+Replaces output #N with X, removing all of the subsequent inputs and outputs.
 - correct N ("correct 7"): Remove the rule that produced input N, and provide a new action to be used instead.
 
 ### Input format:
 
 - Integer literals are entered as: 7
 - String literals are entered as: "asdf"
-- Variables are entered as: x
+- Variables are entered as: x (or #x)
 - A compound expression is a sequence of words, interspersed with subexpressions.
 - A variable name, quoted string, or integer will automatically be interpreted as a subexpression. A compound expression can be enclosed in [] or () to be made into a subexpression.
 
