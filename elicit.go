@@ -11,10 +11,30 @@ import (
 	"github.com/paulfchristiano/dwimmer/term"
 )
 
-var ActionQ = term.Make("what action should be taken in the setting []?")
+var (
+	ActionQ     = term.Make("what action should be taken in the setting []?")
+	FallThrough = term.Make("there is no compiled transition in the setting []; " +
+		"compile one")
+	SetTransition = term.Make("from now on, the transition [] should be made in context []")
+)
 
 func init() {
 	dynamics.AddNativeResponse(ActionQ, 1, dynamics.Args1(findAction))
+	dynamics.AddNativeResponse(FallThrough, 1, dynamics.Args1(fallThrough))
+}
+
+func fallThrough(d dynamics.Dwimmer, s *term.SettingT, quotedSetting term.T) term.T {
+	d.Debug(quotedSetting.String())
+	setting, err := represent.ToSettingT(d, quotedSetting)
+	if err != nil {
+		return term.Make("asked to decide what to do in setting [], "+
+			"but while converting to a setting received []").T(quotedSetting, err)
+	}
+	settingId := setting.Setting.Id
+	action := ElicitAction(d, settingId, true)
+	transition := dynamics.SimpleTransition{action}
+	d.Save(settingId, transition)
+	return core.OK.T()
 }
 
 func findAction(d dynamics.Dwimmer, s *term.SettingT, quotedSetting term.T) term.T {

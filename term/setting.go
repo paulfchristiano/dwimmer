@@ -154,6 +154,12 @@ func (s *SettingS) Lines() []string {
 		case TemplateId:
 			t := line.Template()
 			newindex := index + t.Slots()
+			if len(s.Names) < newindex {
+				panic(fmt.Sprintf(
+					"s.Names = %v, template = %v, index = %d, newindex = %d",
+					s.Names, t, index, newindex,
+				))
+			}
 			result = append(result, fmt.Sprintf(
 				"%d> %s", i,
 				t.ShowWith(s.Names[index:newindex]...),

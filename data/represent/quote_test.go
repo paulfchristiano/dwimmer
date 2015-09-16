@@ -59,6 +59,14 @@ func TestRepresentations(t *testing.T) {
 	if tm3.String() != tm.String() {
 		t.Errorf("%v != %v", tm3, tm)
 	}
+	settingT := term.InitT().AppendTerm(tm)
+	settingT2, err := represent.ToSettingT(d, represent.SettingT(settingT))
+	if err != nil {
+		t.Errorf("received error %v")
+	}
+	if settingT2.Setting.Id != settingT.Setting.Id {
+		t.Errorf("%v != %v", settingT2, settingT)
+	}
 
 	n := -127
 	n2, err := represent.ToInt(d, represent.Int(n))

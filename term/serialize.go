@@ -145,7 +145,7 @@ func unpackT(x intern.Packed) T {
 			}
 			return result
 		case chanT:
-			return Channel{unpackSettingT(val)}
+			return MakeChannel(unpackSettingT(val))
 		case intT:
 			return Int(val.Int())
 		case strT:

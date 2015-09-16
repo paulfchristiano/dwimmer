@@ -27,6 +27,10 @@ var (
 
 //Channels
 
+func MakeChannel(s *SettingT) Channel {
+	return Channel{s.Copy()}
+}
+
 func (c Channel) Head() TemplateId {
 	return channelHead
 }

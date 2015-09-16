@@ -77,15 +77,24 @@ func (d *Dwimmer) DoC(a term.ActionC, s *term.SettingT) term.T {
 	return d.Do(a.Instantiate(s.Args), s)
 }
 
+func subRun(d dynamics.Dwimmer, Q term.T, parent, child *term.SettingT) {
+	defer propagateStackError(Q)
+	stackCheck()
+	child.AppendTerm(ParentChannel.T(term.MakeChannel(parent)))
+	child.AppendTerm(Q)
+	A := d.Run(child)
+	parent.AppendTerm(OpenChannel.T(term.MakeChannel(child)))
+	parent.AppendTerm(A)
+}
+
 func (d *Dwimmer) Do(a term.ActionT, s *term.SettingT) term.T {
 	switch a.Act {
 	case term.Return:
 		return a.Args[0]
 	case term.Ask:
-		question := a.Args[0]
-		answer, setting := d.Ask(question)
-		s.AppendTerm(answer)
-		s.AppendTerm(OpenChannel.T(term.Channel{setting}))
+		Q := a.Args[0]
+		child := term.InitT()
+		subRun(d, Q, s, child)
 		return nil
 	case term.View:
 		value := a.Args[0]
@@ -101,9 +110,9 @@ func (d *Dwimmer) Do(a term.ActionT, s *term.SettingT) term.T {
 		s.Rollback(n).AppendTerm(value)
 		return nil
 	case term.Clarify:
-		question := a.Args[1]
+		Q := a.Args[1]
 		//TODO handle null pointers much better...
-		//(e.g. one part of an expression may refer to a delefted variable)
+		//(e.g. one part of an expression may refer to a deleted variable)
 		if a.Args[0] == nil {
 			s.AppendTerm(Closed.T())
 			return nil
@@ -114,10 +123,7 @@ func (d *Dwimmer) Do(a term.ActionT, s *term.SettingT) term.T {
 			return nil
 		}
 		target := channel.Instantiate()
-		target.AppendTerm(question)
-		result := d.Run(target)
-		s.AppendTerm(result)
-		s.AppendTerm(OpenChannel.T(term.Channel{target}))
+		subRun(d, Q, s, target)
 		return nil
 	case term.Correct:
 		n := a.IntArgs[0]
@@ -133,45 +139,30 @@ func (d *Dwimmer) Do(a term.ActionT, s *term.SettingT) term.T {
 		s.Args[n] = nil
 		s.AppendTerm(core.OK.T())
 		return nil
+	case term.Meta:
+		s.AppendTerm(CurrentSetting.T(represent.SettingT(s)))
+		return nil
 	}
 	panic("unknown kind of action")
 }
 
 var (
-	DeleteNonVar = term.Make("only variables can be deleted")
+	DeleteNonVar   = term.Make("only variables can be deleted")
+	CurrentSetting = term.Make("the current setting is []")
 )
 
 func (d *Dwimmer) Run(setting *term.SettingT) term.T {
 	for {
 		transition, ok := d.Get(setting.Setting.Id)
 		if !ok {
-			actQ := ActionQ.T(represent.Setting(setting.Setting))
-			actA, err := d.Answer(actQ)
-			if err != nil {
-				return WhileAttempting.T(err)
-			}
-			transition, err = represent.ToTransition(d, actA)
-			if err != nil {
-				return term.Make("received [] while trying to convert a term representing a transition " +
-					"into a transition").T(err)
-			}
-			/*
-				fmt.Println("have to go meta!")
-				metaQ := meta.MakeMetaQ(setting)
-				metaA, err := d.Answer(metaQ)
-				if err != nil {
-					return WhileAttempting.T(err)
-				}
-				result, err := represent.ToT(d, metaA)
-				if err != nil {
-					return term.Make("received [] while trying to convert the best reply to a native term").T(err)
-				}
+			//TODO have this method look at advice and determine what to do
+			//(probably need to convert to one of the desired forms)
+			d.Ask(FallThrough.T(represent.SettingT(setting)))
+		} else {
+			result := transition.Step(d, setting)
+			if result != nil {
 				return result
-			*/
-		}
-		result := transition.Step(d, setting)
-		if result != nil {
-			return result
+			}
 		}
 	}
 }
@@ -202,23 +193,27 @@ func (e *StackError) StackSize() int {
 	return len(e.stack)
 }
 
-func (d *Dwimmer) Ask(Q term.T) (term.T, *term.SettingT) {
-	defer func() {
-		x := recover()
-		if x != nil {
-			switch y := x.(type) {
-			case StackError:
-				y.Add(Q.Head().Template())
-				panic(y)
-			}
-			panic(x)
+func propagateStackError(Q term.T) {
+	x := recover()
+	if x != nil {
+		switch y := x.(type) {
+		case StackError:
+			y.Add(Q.Head().Template())
+			panic(y)
 		}
-	}()
+		panic(x)
+	}
+}
+
+func stackCheck() {
 	if rand.Int()%100 == 0 {
 		if stackSize() > 1e7 {
 			panic(StackError{[]*term.Template{}, "stack is too large!"})
 		}
 	}
+}
+
+func (d *Dwimmer) Ask(Q term.T) (term.T, *term.SettingT) {
 	setting := term.InitT().AppendTerm(Q)
 	return d.Run(setting), setting
 }
@@ -228,6 +223,7 @@ var (
 	WhileAttempting = term.Make("while trying to figure out what answer to produce, received the reply []")
 	Closed          = term.Make("an error signal returned when a deleted argument is viewed")
 	OpenChannel     = term.Make("@[]")
+	ParentChannel   = term.Make("@[]*")
 	NotAChannel     = term.Make("an error signal returned when a message is sent to an invalid target")
 )
 

@@ -193,7 +193,6 @@ func ToInt(d dynamics.Dwimmer, t term.T) (int, term.T) {
 			return 2*k + 1, nil
 		}
 	}
-	d.Debug(t.String())
 	reduced, err := d.Answer(UnquoteInt.T(t))
 	if err != nil {
 		return 0, err
@@ -397,7 +396,7 @@ func ToSetting(d dynamics.Dwimmer, t term.T) (*term.Setting, term.T) {
 func ToSettingT(d dynamics.Dwimmer, t term.T) (*term.SettingT, term.T) {
 	switch t.Head() {
 	case QuotedSettingT.Head():
-		setting, err := ToSetting(d, t.Values()[1])
+		setting, err := ToSetting(d, t.Values()[0])
 		if err != nil {
 			return nil, term.Make("asked to convert concrete setting, "+
 				"but received [] while trying to convert its setting []").T(err, t.Values()[0])

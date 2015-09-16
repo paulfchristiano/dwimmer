@@ -29,6 +29,7 @@ var (
 			"to the instantiation of its second argument"),
 		term.Correct: term.Make("the parametrized action that prompts the user to correct its first index"),
 		term.Delete:  term.Make("the action that deletes the variable indexed by its first index"),
+		term.Meta:    term.Make("the action that returns a reference to the current setting"),
 	}
 
 	QuotedCompoundC = term.Make("the constructor that has template [] and arguments formed by " +
@@ -103,7 +104,11 @@ func ActionC(a term.ActionC) term.T {
 }
 
 func Action(a term.Action) term.T {
-	return ActionLookup[a].T()
+	result, ok := ActionLookup[a]
+	if !ok {
+		panic("quoting unknown action")
+	}
+	return result.T()
 }
 
 func Transition(t dynamics.Transition) term.T {

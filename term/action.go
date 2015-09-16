@@ -15,6 +15,7 @@ const (
 	Clarify
 	Correct
 	Delete
+	Meta
 )
 
 func (a Action) String() string {
@@ -33,6 +34,8 @@ func (a Action) String() string {
 		return "correct"
 	case Delete:
 		return "del"
+	case Meta:
+		return "meta"
 	}
 	panic("unknown type of action")
 }
@@ -173,4 +176,8 @@ func CorrectT(n int) ActionT {
 }
 func DeleteT(n int) ActionT {
 	return ActionT{Delete, []T{}, []int{n}}
+}
+
+func MetaC() ActionC {
+	return ActionC{Meta, []C{}, []int{}}
 }

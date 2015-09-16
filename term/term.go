@@ -155,6 +155,9 @@ func Make(ss ...string) TemplateId {
 }
 
 func (t TemplateId) T(ts ...T) T {
+	if t.Slots() != len(ts) {
+		panic(fmt.Sprintf("instantiating %v with arguments %v", t.String(), ts))
+	}
 	return &CompoundT{t, ts}
 }
 func (t TemplateId) C(cs ...C) C {

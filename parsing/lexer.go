@@ -82,6 +82,8 @@ func (r *lexer) setActionResult(head string, e *Expr, n int) {
 		a = term.ReplaceC(t, n)
 	case "correct", "fix", "debug":
 		a = term.CorrectC(n)
+	case "meta", "self", "here", "this":
+		a = term.MetaC()
 	case "close", "dismiss", "stop", "delete", "del", "remove":
 		c := toC(e)
 		switch c := c.(type) {
