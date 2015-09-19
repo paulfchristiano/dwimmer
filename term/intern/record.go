@@ -1,65 +1,60 @@
 package intern
 
+type Recorder struct{}
+
+var _ Packer = Recorder{}
+
 type Record struct {
 	Value interface{}
 }
 
-func (record *Record) New() Packed {
-	return &Record{}
+func (r Record) packable() {}
+
+func (_ Recorder) PackString(s string) Packed {
+	return Record{s}
 }
 
-func (record *Record) Empty() Packed {
-	record.Value = []interface{}{}
-	return record
+func (_ Recorder) PackInt(n int) Packed {
+	return Record{n}
 }
 
-func (record *Record) StoreStr(s string) Packed {
-	record.Value = s
-	return record
+func (_ Recorder) PackPair(x, y Packed) Packed {
+	return Record{[]Packed{x, y}}
 }
 
-func (record *Record) StoreInt(n int) Packed {
-	record.Value = n
-	return record
+func (_ Recorder) PackList(xs []Packed) Packed {
+	return Record{xs}
 }
 
-func (record *Record) StorePair(x, y Packed) Packed {
-	record.Value = []interface{}{x.(*Record).Value, y.(*Record).Value}
-	return record
+func (_ Recorder) AppendToPacked(init, last Packed) Packed {
+	result := init.(Record).Value.([]Packed)
+	result = append(result, last)
+	return Record{result}
 }
 
-func (record *Record) StoreList(xs []Packed) Packed {
-	result := make([]interface{}, len(xs))
-	for i, x := range xs {
-		result[i] = x.(*Record).Value
-	}
-	record.Value = result
-	return record
+func (_ Recorder) UnpackString(record Packed) string {
+	return record.(Record).Value.(string)
 }
 
-func (record *Record) Append(other Packed) Packed {
-	record.Value = append((record.Value).([]interface{}), other.(*Record).Value)
-	return record
+func (_ Recorder) UnpackInt(record Packed) int {
+	return record.(Record).Value.(int)
 }
 
-func (record *Record) Str() string {
-	return record.Value.(string)
+func (_ Recorder) UnpackPair(record Packed) (Packed, Packed) {
+	elems := record.(Record).Value.([]Packed)
+	return elems[0], elems[1]
 }
 
-func (record *Record) Int() int {
-	return record.Value.(int)
+func (_ Recorder) UnpackList(record Packed) []Packed {
+	return record.(Record).Value.([]Packed)
 }
 
-func (record *Record) Pair() (Packed, Packed) {
-	l := record.Value.([]interface{})
-	return &Record{l[0]}, &Record{l[1]}
+func (_ Recorder) UnpackLast(record Packed) Packed {
+	result := record.(Record).Value.([]Packed)
+	return result[len(result)-1]
 }
 
-func (record *Record) List() []Packed {
-	values := record.Value.([]interface{})
-	result := make([]Packed, len(values))
-	for i, value := range values {
-		result[i] = &Record{value}
-	}
-	return result
+func (_ Recorder) UnpackInit(record Packed) Packed {
+	result := record.(Record).Value.([]Packed)
+	return Record{result[:len(result)-1]}
 }

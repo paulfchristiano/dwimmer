@@ -3,6 +3,8 @@ package term
 import (
 	"fmt"
 	"reflect"
+
+	"github.com/paulfchristiano/dwimmer/term/intern"
 )
 
 type Str string
@@ -31,11 +33,11 @@ func MakeChannel(s *SettingT) Channel {
 	return Channel{s.Copy()}
 }
 
-func (c Channel) Head() TemplateId {
+func (c Channel) Head() TemplateID {
 	return channelHead
 }
 
-func (c Channel) String() string {
+func (c Channel) String(ider intern.Packer) string {
 	return fmt.Sprintf("->")
 }
 
@@ -49,11 +51,11 @@ func (c Channel) Instantiate() *SettingT {
 
 //Strings
 
-func (s Str) Head() TemplateId {
+func (s Str) Head() TemplateID {
 	return strHead
 }
 
-func (s Str) String() string {
+func (s Str) String(ider intern.Packer) string {
 	return fmt.Sprintf("\"%s\"", string(s))
 }
 
@@ -63,11 +65,11 @@ func (s Str) Values() []T {
 
 //Integers
 
-func (n Int) Head() TemplateId {
+func (n Int) Head() TemplateID {
 	return intHead
 }
 
-func (n Int) String() string {
+func (n Int) String(ider intern.Packer) string {
 	return fmt.Sprintf("%d", int(n))
 }
 
@@ -81,12 +83,12 @@ func Quote(v T) T {
 	return Quoted{v}
 }
 
-func (q Quoted) Head() TemplateId {
+func (q Quoted) Head() TemplateID {
 	return quotedHead
 }
 
-func (q Quoted) String() string {
-	return fmt.Sprintf("T(%v)", q.Value)
+func (q Quoted) String(ider intern.Packer) string {
+	return fmt.Sprintf("T(%s)", q.Value.String(ider))
 }
 
 func (q Quoted) Values() []T {
@@ -99,11 +101,11 @@ func Wrap(i interface{}) T {
 	return Wrapper{reflect.ValueOf(i)}
 }
 
-func (w Wrapper) Head() TemplateId {
+func (w Wrapper) Head() TemplateID {
 	return wrapperHead
 }
 
-func (w Wrapper) String() string {
+func (w Wrapper) String(ider intern.Packer) string {
 	return fmt.Sprintf("GoObject(%v)", w.Value)
 }
 
@@ -124,8 +126,8 @@ func (c ConstS) Instantiate(names []string) C {
 	return ConstC{c.Val}
 }
 
-func (c ConstS) String() string {
-	return c.Val.String()
+func (c ConstS) String(ider intern.Packer) string {
+	return c.Val.String(ider)
 }
 
 func (s ConstS) Values() []S {
@@ -136,7 +138,7 @@ func (s ConstS) Values() []S {
 	return vals
 }
 
-func (s ConstS) Head() TemplateId {
+func (s ConstS) Head() TemplateID {
 	return s.Val.Head()
 }
 
@@ -148,8 +150,8 @@ func (c ConstC) Uninstantiate(names []string) S {
 	return ConstS{c.Val}
 }
 
-func (c ConstC) String() string {
-	return c.Val.String()
+func (c ConstC) String(ider intern.Packer) string {
+	return c.Val.String(ider)
 }
 
 func (c ConstC) Values() []C {
@@ -160,6 +162,6 @@ func (c ConstC) Values() []C {
 	return vals
 }
 
-func (c ConstC) Head() TemplateId {
+func (c ConstC) Head() TemplateID {
 	return c.Val.Head()
 }

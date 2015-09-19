@@ -11,7 +11,7 @@ import (
 //Also, it exploits the fact that a setting can't change after going into a channel :(
 
 type Setting struct {
-	Id       SettingId
+	ID       SettingID
 	Previous *Setting
 	Last     SettingLine
 	Slots    int
@@ -28,31 +28,28 @@ func (s *Setting) Rollback(n int) *Setting {
 	return s.Previous.Rollback(n)
 }
 
-func Init() *Setting {
-	id := new(intern.Id)
-	id.Empty()
+func Init(ider intern.Packer) *Setting {
 	return &Setting{
-		Id: SettingId(*id),
+		ID: SettingID(ider.PackList([]intern.Packed{}).(intern.ID)),
 	}
 }
 
-func (s *Setting) Append(line SettingLine, slotss ...int) *Setting {
+func (s *Setting) Append(ider intern.Packer, line SettingLine, slotss ...int) *Setting {
 	var slots int
 	if len(slotss) == 0 {
-		slots = line.Slots()
+		slots = line.Slots(ider)
 	} else {
 		slots = slotss[0]
 	}
-	id := new(intern.Id)
-	*id = intern.Id(s.Id)
-	lineId := line.LineId()
-	id.Append(&lineId)
 	return &Setting{
 		Previous: s,
 		Last:     line,
 		Slots:    slots,
 		Size:     s.Size + 1,
-		Id:       SettingId(*id),
+		ID: SettingID(ider.AppendToPacked(
+			intern.ID(s.ID),
+			line.LineID(ider),
+		).(intern.ID)),
 	}
 }
 
@@ -72,41 +69,24 @@ func (s *Setting) Lines() []SettingLine {
 }
 
 type SettingLine interface {
-	LineId() intern.Id
-	Pack(intern.Packed) intern.Packed
-	Slots() int
+	LineID(intern.Packer) intern.ID
+	Slots(intern.Packer) int
 }
 
-func (a ActionCId) LineId() intern.Id {
-	return intern.Id(a)
+func (a ActionCID) LineID(ider intern.Packer) intern.ID {
+	return intern.ID(a)
 }
 
-func (a ActionCId) Slots() int {
+func (a ActionCID) Slots(ider intern.Packer) int {
 	return 0
 }
 
-func (t TemplateId) Slots() int {
-	return t.Template().Slots()
+func (t TemplateID) Slots(ider intern.Packer) int {
+	return ToTemplate(ider, t).Slots()
 }
 
-func (a ActionCId) Pack(x intern.Packed) intern.Packed {
-	switch x := x.(type) {
-	case *intern.Id:
-		*x = intern.Id(a)
-	}
-	return a.ActionC().Pack(x)
-}
-
-func (a TemplateId) Pack(x intern.Packed) intern.Packed {
-	switch x := x.(type) {
-	case *intern.Id:
-		*x = intern.Id(a)
-	}
-	return a.Template().Pack(x)
-}
-
-func (t TemplateId) LineId() intern.Id {
-	return intern.Id(t)
+func (t TemplateID) LineID(ider intern.Packer) intern.ID {
+	return intern.ID(t)
 }
 
 type SettingS struct {
@@ -123,15 +103,15 @@ func (s *SettingS) Copy() *SettingS {
 	return result
 }
 
-func InitS() *SettingS {
+func InitS(ider intern.Packer) *SettingS {
 	return &SettingS{
-		Setting: Init(),
+		Setting: Init(ider),
 		Names:   []string{},
 	}
 }
 
-func (s *SettingS) AppendTemplate(t TemplateId, names ...string) *SettingS {
-	s.Setting = s.Setting.Append(t, len(names))
+func (s *SettingS) AppendTemplate(ider intern.Packer, t TemplateID, names ...string) *SettingS {
+	s.Setting = s.Setting.Append(ider, t, len(names))
 	for i := range names {
 		for j := range s.Names {
 			if names[i] == s.Names[j] {
@@ -143,23 +123,23 @@ func (s *SettingS) AppendTemplate(t TemplateId, names ...string) *SettingS {
 	return s
 }
 
-func (s *SettingS) AppendAction(a ActionC) *SettingS {
-	id := a.Id()
-	s.Setting = s.Setting.Append(id, 0)
+func (s *SettingS) AppendAction(ider intern.Packer, a ActionC) *SettingS {
+	id := IDActionC(ider, a)
+	s.Setting = s.Setting.Append(ider, id, 0)
 	return s
 }
 
-func (s *SettingS) Lines() []string {
+func (s *SettingS) Lines(ider intern.Packer) []string {
 	lines := s.Setting.Lines()
 	result := make([]string, 0)
 	index := 0
 	for i, line := range lines {
 		switch line := line.(type) {
-		case ActionCId:
-			a := line.ActionC()
-			result = append(result, "", fmt.Sprintf("%d< %s", i, a.Uninstantiate(s.Names).String()))
-		case TemplateId:
-			t := line.Template()
+		case ActionCID:
+			a := ToActionC(ider, line)
+			result = append(result, "", fmt.Sprintf("%d< %s", i, a.Uninstantiate(s.Names).String(ider)))
+		case TemplateID:
+			t := ToTemplate(ider, line)
 			newindex := index + t.Slots()
 			if len(s.Names) < newindex {
 				panic(fmt.Sprintf(
@@ -184,9 +164,9 @@ type SettingT struct {
 	Args    []T
 }
 
-func InitT() *SettingT {
+func InitT(ider intern.Packer) *SettingT {
 	return &SettingT{
-		Setting: Init(),
+		Setting: Init(ider),
 		Args:    []T{},
 	}
 }
@@ -200,15 +180,15 @@ func (s *SettingT) Copy() *SettingT {
 	return result
 }
 
-func (s *SettingT) AppendTerm(t T) *SettingT {
-	s.Setting = s.Setting.Append(t.Head(), len(t.Values()))
+func (s *SettingT) AppendTerm(ider intern.Packer, t T) *SettingT {
+	s.Setting = s.Setting.Append(ider, t.Head(), len(t.Values()))
 	s.Args = append(s.Args, t.Values()...)
 	return s
 }
 
-func (s *SettingT) AppendAction(a ActionC) *SettingT {
-	id := a.Id()
-	s.Setting = s.Setting.Append(id, 0)
+func (s *SettingT) AppendAction(ider intern.Packer, a ActionC) *SettingT {
+	id := IDActionC(ider, a)
+	s.Setting = s.Setting.Append(ider, id, 0)
 	return s
 }
 

@@ -18,25 +18,24 @@ const (
 
 //Template
 
-type TemplateId intern.Id
+type TemplateID intern.ID
 
-func (t *Template) Pack(x intern.Packed) intern.Packed {
-	x.Empty()
-	for _, s := range t.Parts {
-		x.Append(x.New().StoreStr(s))
+func packTemplate(p intern.Packer, t *Template) intern.Packed {
+	parts := make([]intern.Packed, len(t.Parts))
+	for i, part := range t.Parts {
+		parts[i] = p.PackString(part)
 	}
-	x.StorePair(x.New().StoreInt(int(v1Template)), x)
-	return x
+	return p.PackPair(p.PackInt(int(v1Template)), p.PackList(parts))
 }
 
-func unpackTemplate(x intern.Packed) *Template {
-	v, x := x.Pair()
-	switch versionAndType(v.Int()) {
+func unpackTemplate(p intern.Packer, x intern.Packed) *Template {
+	v, x := p.UnpackPair(x)
+	switch versionAndType(p.UnpackInt(v)) {
 	case v1Template:
-		parts := x.List()
+		parts := p.UnpackList(x)
 		t := Template{make([]string, len(parts))}
 		for i, part := range parts {
-			t.Parts[i] = part.Str()
+			t.Parts[i] = p.UnpackString(part)
 		}
 		return &t
 	default:
@@ -44,33 +43,25 @@ func unpackTemplate(x intern.Packed) *Template {
 	}
 }
 
-func (id TemplateId) Template() *Template {
-	return unpackTemplate((*intern.Id)(&id))
+func ToTemplate(ider intern.Packer, id TemplateID) *Template {
+	return unpackTemplate(ider, intern.ID(id))
 }
 
-func IdTemplate(t *Template) TemplateId {
-	x := new(intern.Id)
-	t.Pack(x)
-	return TemplateId(*x)
-}
-
-func (t *Template) Id() TemplateId {
-	return IdTemplate(t)
+func IDTemplate(ider intern.Packer, t *Template) TemplateID {
+	return TemplateID(packTemplate(ider, t).(intern.ID))
 }
 
 func SaveTemplate(t *Template) interface{} {
-	x := new(intern.Record)
-	t.Pack(x)
-	return x.Value
+	return packTemplate(intern.Recorder{}, t).(intern.Record).Value
 }
 
 func LoadTemplate(b bson.M) *Template {
-	return unpackTemplate(&intern.Record{b})
+	return unpackTemplate(intern.Recorder{}, intern.Record{b})
 }
 
 //T
 
-type TId intern.Id
+type TID intern.ID
 
 type kindT int
 
@@ -83,75 +74,74 @@ const (
 	chanT
 )
 
-func IdT(t T) TId {
-	x := new(intern.Id)
-	t.Pack(x)
-	return TId(*x)
+func IDT(ider intern.Packer, t T) TID {
+	return TID(packT(ider, ider, t).(intern.ID))
 }
 
-func (t *CompoundT) Pack(x intern.Packed) intern.Packed {
-	x.Empty()
-	for _, arg := range t.args {
-		x.Append(arg.Pack(x.New()))
+func packT(packer, ider intern.Packer, t T) intern.Packed {
+	var raw intern.Packed
+	var kind kindT
+	switch t := t.(type) {
+	case *CompoundT:
+		args := make([]intern.Packed, len(t.args))
+		for i, arg := range t.args {
+			args[i] = packT(packer, ider, arg)
+		}
+		raw = packer.PackPair(
+			packTemplate(packer, ToTemplate(ider, t.Head())),
+			packer.PackList(args),
+		)
+		kind = compoundT
+	case Channel:
+		raw = packSettingT(packer, ider, t.Setting)
+		kind = chanT
+	case Str:
+		raw = packer.PackString(string(t))
+		kind = strT
+	case Int:
+		raw = packer.PackInt(int(t))
+		kind = intT
+	case Quoted:
+		raw = packT(packer, ider, t.Value)
+		kind = quotedT
+	case Wrapper:
+		raw = packer.PackInt(-1)
+		kind = wrapperT
+	default:
+		panic("unknown kind of T")
 	}
-	x.StorePair(t.Template().Pack(x.New()), x)
-	x.StorePair(x.New().StoreInt(int(compoundT)), x)
-	x.StorePair(x.New().StoreInt(int(v1T)), x)
-	return x
-}
-
-func (t Channel) Pack(x intern.Packed) intern.Packed {
-	x.StorePair(x.New().StoreInt(int(chanT)), t.Setting.Pack(x.New()))
-	x.StorePair(x.New().StoreInt(int(v1T)), x)
-	return x
-}
-
-func (t Str) Pack(x intern.Packed) intern.Packed {
-	x.StorePair(x.New().StoreInt(int(strT)), x.New().StoreStr(string(t)))
-	x.StorePair(x.New().StoreInt(int(v1T)), x)
-	return x
-}
-
-func (t Int) Pack(x intern.Packed) intern.Packed {
-	x.StorePair(x.New().StoreInt(int(intT)), x.New().StoreInt(int(t)))
-	x.StorePair(x.New().StoreInt(int(v1T)), x)
-	return x
-}
-
-func (t Quoted) Pack(x intern.Packed) intern.Packed {
-	x.StorePair(x.New().StoreInt(int(quotedT)), t.Value.Pack(x.New()))
-	x.StorePair(x.New().StoreInt(int(v1T)), x)
-	return x
-}
-
-func (w Wrapper) Pack(x intern.Packed) intern.Packed {
-	return x.StoreInt(int(wrapperT))
+	typed := packer.PackPair(packer.PackInt(int(kind)), raw)
+	versioned := packer.PackPair(packer.PackInt(int(v1T)), typed)
+	return versioned
 }
 
 var Unwrapped = Make("an unknown value that was destroyed by serialization")
 
-func unpackT(x intern.Packed) T {
-	v, x := x.Pair()
-	switch versionAndType(v.Int()) {
+func unpackT(packer, ider intern.Packer, x intern.Packed) T {
+	v, x := packer.UnpackPair(x)
+	switch versionAndType(packer.UnpackInt(v)) {
 	case v1T:
-		kind, val := x.Pair()
-		switch kindT(kind.Int()) {
+		kind, val := packer.UnpackPair(x)
+		switch kindT(packer.UnpackInt(kind)) {
 		case compoundT:
-			head, packedArgs := val.Pair()
-			args := packedArgs.List()
-			result := &CompoundT{IdTemplate(unpackTemplate(head)), make([]T, len(args))}
+			head, packedArgs := packer.UnpackPair(val)
+			args := packer.UnpackList(packedArgs)
+			result := &CompoundT{
+				IDTemplate(ider, unpackTemplate(packer, head)),
+				make([]T, len(args)),
+			}
 			for i, arg := range args {
-				result.args[i] = unpackT(arg)
+				result.args[i] = unpackT(packer, ider, arg)
 			}
 			return result
 		case chanT:
-			return MakeChannel(unpackSettingT(val))
+			return MakeChannel(unpackSettingT(packer, ider, val))
 		case intT:
-			return Int(val.Int())
+			return Int(packer.UnpackInt(val))
 		case strT:
-			return Str(val.Str())
+			return Str(packer.UnpackString(val))
 		case quotedT:
-			return Quoted{unpackT(val)}
+			return Quoted{unpackT(packer, ider, val)}
 		case wrapperT:
 			panic("unwrapping the ununwrappable")
 			return Unwrapped.T()
@@ -163,23 +153,21 @@ func unpackT(x intern.Packed) T {
 	}
 }
 
-func (id TId) T() T {
-	return unpackT((*intern.Id)(&id))
+func ToT(ider intern.Packer, id TID) T {
+	return unpackT(ider, ider, intern.ID(id))
 }
 
-func SaveT(t T) interface{} {
-	x := new(intern.Record)
-	t.Pack(x)
-	return x.Value
+func SaveT(ider intern.Packer, t T) interface{} {
+	return packT(intern.Recorder{}, ider, t).(intern.Record).Value
 }
 
-func LoadT(b interface{}) T {
-	return unpackT(&intern.Record{b})
+func LoadT(ider intern.Packer, b interface{}) T {
+	return unpackT(intern.Recorder{}, ider, intern.Record{b})
 }
 
 //C
 
-type CId intern.Id
+type CID intern.ID
 
 type kindC int
 
@@ -189,114 +177,116 @@ const (
 	constantC
 )
 
-func (t *CompoundC) Pack(x intern.Packed) intern.Packed {
-	x.Empty()
-	for _, arg := range t.args {
-		x.Append(arg.Pack(x.New()))
+func packC(packer, ider intern.Packer, c C) intern.Packed {
+	var kind kindC
+	var raw intern.Packed
+	switch c := c.(type) {
+	case *CompoundC:
+		args := make([]intern.Packed, len(c.args))
+		for i, arg := range c.args {
+			args[i] = packC(packer, ider, arg)
+		}
+		raw = packer.PackPair(packTemplate(packer, ToTemplate(ider, c.Head())), packer.PackList(args))
+		kind = compoundC
+	case ReferenceC:
+		raw = packer.PackInt(int(c.Index))
+		kind = referenceC
+	case ConstC:
+		raw = packT(packer, ider, c.Val)
+		kind = constantC
+	default:
+		panic("packing unknown type of C")
 	}
-	x.StorePair(t.Template().Pack(x.New()), x)
-	x.StorePair(x.New().StoreInt(int(compoundC)), x)
-	x.StorePair(x.New().StoreInt(int(v1C)), x)
-	return x
+	typed := packer.PackPair(packer.PackInt(int(kind)), raw)
+	versioned := packer.PackPair(packer.PackInt(int(v1C)), typed)
+	return versioned
 }
 
-func (r ReferenceC) Pack(x intern.Packed) intern.Packed {
-	x.StorePair(x.New().StoreInt(int(referenceC)), x.New().StoreInt(r.Index))
-	x.StorePair(x.New().StoreInt(int(v1C)), x)
-	return x
+func IDC(ider intern.Packer, c C) CID {
+	return CID(packC(ider, ider, c).(intern.ID))
 }
 
-func (c ConstC) Pack(x intern.Packed) intern.Packed {
-	x.StorePair(x.New().StoreInt(int(constantC)), c.Val.Pack(x.New()))
-	x.StorePair(x.New().StoreInt(int(v1C)), x)
-	return x
+func ToC(ider intern.Packer, id CID) C {
+	return unpackC(ider, ider, intern.ID(id))
 }
 
-func IdC(c C) CId {
-	x := new(intern.Id)
-	c.Pack(x)
-	return CId(*x)
-}
-
-func (id CId) C() C {
-	return unpackC((*intern.Id)(&id))
-}
-
-func unpackC(x intern.Packed) C {
-	v, x := x.Pair()
-	switch versionAndType(v.Int()) {
+func unpackC(packer, ider intern.Packer, x intern.Packed) C {
+	v, x := packer.UnpackPair(x)
+	switch versionAndType(packer.UnpackInt(v)) {
 	case v1C:
-		kind, val := x.Pair()
-		switch kindC(kind.Int()) {
+		kind, val := packer.UnpackPair(x)
+		switch kindC(packer.UnpackInt(kind)) {
 		case compoundC:
-			head, packedArgs := val.Pair()
-			args := packedArgs.List()
-			result := &CompoundC{IdTemplate(unpackTemplate(head)), make([]C, len(args))}
+			head, packedArgs := packer.UnpackPair(val)
+			args := packer.UnpackList(packedArgs)
+			result := &CompoundC{
+				IDTemplate(ider, unpackTemplate(packer, head)),
+				make([]C, len(args)),
+			}
 			for i, arg := range args {
-				result.args[i] = unpackC(arg)
+				result.args[i] = unpackC(packer, ider, arg)
 			}
 			return result
 		case referenceC:
-			return ReferenceC{val.Int()}
+			return ReferenceC{packer.UnpackInt(val)}
 		case constantC:
-			return ConstC{unpackT(val)}
+			return ConstC{unpackT(packer, ider, val)}
 		default:
 			panic("unknown kind of C")
 		}
 	default:
-		panic("unknown version or wrong data type")
+		panic("unknown version or wrong type of data")
 	}
 }
 
-func SaveC(t C) interface{} {
-	x := new(intern.Record)
-	t.Pack(x)
-	return x.Value
+func SaveC(ider intern.Packer, c C) interface{} {
+	return packC(intern.Recorder{}, ider, c).(intern.Record).Value
 }
 
-func LoadC(b interface{}) C {
-	return unpackC(&intern.Record{b})
+func LoadC(ider intern.Packer, b interface{}) C {
+	return unpackC(intern.Recorder{}, ider, intern.Record{b})
 }
 
 //Actions
 
-type ActionCId intern.Id
+type ActionCID intern.ID
 
-func (a ActionC) Pack(x intern.Packed) intern.Packed {
-	packedIntArgs := x.New().Empty()
-	for _, arg := range a.IntArgs {
-		packedIntArgs.Append(x.New().StoreInt(arg))
+func packActionC(packer, ider intern.Packer, a ActionC) intern.Packed {
+	intArgs := make([]intern.Packed, len(a.IntArgs))
+	for i, arg := range a.IntArgs {
+		intArgs[i] = packer.PackInt(arg)
 	}
-	packedArgs := x.New().Empty()
-	for _, arg := range a.Args {
-		packedArgs.Append(arg.Pack(x.New()))
+	packedIntArgs := packer.PackList(intArgs)
+	args := make([]intern.Packed, len(a.Args))
+	for i, arg := range a.Args {
+		args[i] = packC(packer, ider, arg)
 	}
-	allArgs := x.New().StorePair(packedIntArgs, packedArgs)
-	act := x.New().StoreInt(int(a.Act))
-	x.StorePair(act, allArgs)
-	version := x.New().StoreInt(int(v1ActionC))
-	x.StorePair(version, x)
-	return x
+	packedArgs := packer.PackList(args)
+	allArgs := packer.PackPair(packedIntArgs, packedArgs)
+	act := packer.PackInt(int(a.Act))
+	raw := packer.PackPair(act, allArgs)
+	versioned := packer.PackPair(packer.PackInt(int(v1ActionC)), raw)
+	return versioned
 }
 
-func unpackActionC(x intern.Packed) ActionC {
-	version, x := x.Pair()
-	switch versionAndType(version.Int()) {
+func unpackActionC(packer, ider intern.Packer, x intern.Packed) ActionC {
+	version, x := packer.UnpackPair(x)
+	switch versionAndType(packer.UnpackInt(version)) {
 	case v1ActionC:
-		act, allArgs := x.Pair()
-		packedIntArgs, packedArgs := allArgs.Pair()
-		args := packedArgs.List()
-		intArgs := packedIntArgs.List()
+		act, allArgs := packer.UnpackPair(x)
+		packedIntArgs, packedArgs := packer.UnpackPair(allArgs)
+		args := packer.UnpackList(packedArgs)
+		intArgs := packer.UnpackList(packedIntArgs)
 		result := ActionC{
-			Act:     Action(act.Int()),
+			Act:     Action(packer.UnpackInt(act)),
 			Args:    make([]C, len(args)),
 			IntArgs: make([]int, len(intArgs)),
 		}
 		for i, arg := range args {
-			result.Args[i] = unpackC(arg)
+			result.Args[i] = unpackC(packer, ider, arg)
 		}
 		for i, arg := range intArgs {
-			result.IntArgs[i] = arg.Int()
+			result.IntArgs[i] = packer.UnpackInt(arg)
 		}
 		return result
 	default:
@@ -304,54 +294,59 @@ func unpackActionC(x intern.Packed) ActionC {
 	}
 }
 
-func IdActionC(a ActionC) ActionCId {
-	x := new(intern.Id)
-	a.Pack(x)
-	return ActionCId(*x)
+func IDActionC(ider intern.Packer, a ActionC) ActionCID {
+	return ActionCID(packActionC(ider, ider, a).(intern.ID))
 }
 
-func (id ActionCId) ActionC() ActionC {
-	return unpackActionC((*intern.Id)(&id))
+func ToActionC(ider intern.Packer, id ActionCID) ActionC {
+	return unpackActionC(ider, ider, intern.ID(id))
 }
 
-func SaveActionC(t ActionC) interface{} {
-	x := new(intern.Record)
-	t.Pack(x)
-	return x.Value
+func SaveActionC(ider intern.Packer, a ActionC) interface{} {
+	return packActionC(intern.Recorder{}, ider, a).(intern.Record).Value
 }
 
-func LoadActionC(b interface{}) ActionC {
-	return unpackActionC(&intern.Record{b})
+func LoadActionC(ider intern.Packer, b interface{}) ActionC {
+	return unpackActionC(intern.Recorder{}, ider, intern.Record{b})
 }
 
 //Setting Line
 
-func unpackSettingLine(x intern.Packed) (SettingLine, int) {
-	v, _ := x.Pair()
-	switch versionAndType(v.Int()) {
+func unpackSettingLine(packer, ider intern.Packer, x intern.Packed) (SettingLine, int) {
+	v, _ := packer.UnpackPair(x)
+	switch versionAndType(packer.UnpackInt(v)) {
 	case v1Template:
-		template := unpackTemplate(x)
-		return template.Id(), template.Slots()
+		template := unpackTemplate(packer, x)
+		return IDTemplate(ider, template), template.Slots()
 	case v1ActionC:
-		return unpackActionC(x).Id(), 0
+		return IDActionC(ider, unpackActionC(packer, ider, x)), 0
 	default:
 		panic("unknown version or bad data type")
 	}
 }
 
+func packSettingLine(packer, ider intern.Packer, l SettingLine) intern.Packed {
+	switch l := l.(type) {
+	case ActionCID:
+		return packActionC(packer, ider, ToActionC(ider, l))
+	case TemplateID:
+		return packTemplate(packer, ToTemplate(ider, l))
+	default:
+		panic("unknown kind of setting line")
+	}
+}
+
 //SettingT
 
-type SettingTId intern.Id
-
-func unpackSettingT(x intern.Packed) *SettingT {
-	v, x := x.Pair()
-	switch versionAndType(v.Int()) {
+func unpackSettingT(packer, ider intern.Packer, x intern.Packed) *SettingT {
+	v, x := packer.UnpackPair(x)
+	switch versionAndType(packer.UnpackInt(v)) {
 	case v1SettingT:
-		setting, args := x.Pair()
+		setting, args := packer.UnpackPair(x)
 		result := &SettingT{}
-		result.Setting = unpackSetting(setting)
-		for _, arg := range args.List() {
-			result.Args = append(result.Args, unpackT(arg))
+		result.Setting = unpackSetting(packer, ider, setting)
+		for _, arg := range packer.UnpackList(args) {
+			result.Args = append(result.Args, unpackT(packer, ider, arg))
 		}
 		return result
 	default:
@@ -359,55 +354,51 @@ func unpackSettingT(x intern.Packed) *SettingT {
 	}
 }
 
-func (s *SettingT) Pack(x intern.Packed) intern.Packed {
-	x.Empty()
-	for _, arg := range s.Args {
-		x.Append(arg.Pack(x.New()))
+func packSettingT(packer, ider intern.Packer, s *SettingT) intern.Packed {
+	args := make([]intern.Packed, len(s.Args))
+	for i, arg := range s.Args {
+		args[i] = packT(packer, ider, arg)
 	}
-	x.StorePair(s.Setting.Pack(x.New()), x)
-	x.StorePair(x.New().StoreInt(int(v1SettingT)), x)
-	return x
+	raw := packer.PackPair(packSetting(packer, ider, s.Setting), packer.PackList(args))
+	versioned := packer.PackPair(packer.PackInt(int(v1SettingT)), raw)
+	return versioned
 }
 
 //Setting
 
-type SettingId intern.Id
+type SettingID intern.ID
 
-func unpackSetting(x intern.Packed) *Setting {
-	packedLines := x.List()
-	result := Init()
+func unpackSetting(packer, ider intern.Packer, x intern.Packed) *Setting {
+	packedLines := packer.UnpackList(x)
+	result := Init(ider)
 	for _, packedLine := range packedLines {
-		line, slots := unpackSettingLine(packedLine)
-		result = result.Append(line, slots)
+		line, slots := unpackSettingLine(packer, ider, packedLine)
+		result = result.Append(ider, line, slots)
 	}
 	return result
 }
 
-func (s *Setting) Pack(x intern.Packed) intern.Packed {
+func packSetting(packer, ider intern.Packer, s *Setting) intern.Packed {
 	if s.Size == 0 {
-		return x.Empty()
+		return packer.PackList([]intern.Packed{})
 	}
-	s.Previous.Pack(x)
-	x.Append(s.Last.Pack(x.New()))
-	return x
+	previous := packSetting(packer, ider, s.Previous)
+	last := packSettingLine(packer, ider, s.Last)
+	return packer.AppendToPacked(previous, last)
 }
 
-func (id SettingId) Setting() *Setting {
-	return unpackSetting((*intern.Id)(&id))
+func ToSetting(ider intern.Packer, id SettingID) *Setting {
+	return unpackSetting(ider, ider, intern.ID(id))
 }
 
-func IdSetting(s *Setting) SettingId {
-	x := new(intern.Id)
-	s.Pack(x)
-	return SettingId(*x)
+func IDSetting(ider intern.Packer, s *Setting) SettingID {
+	return SettingID(packSetting(ider, ider, s).(intern.ID))
 }
 
-func SaveSetting(t *Setting) interface{} {
-	x := new(intern.Record)
-	t.Pack(x)
-	return x.Value
+func SaveSetting(ider intern.Packer, s *Setting) interface{} {
+	return packSetting(intern.Recorder{}, ider, s)
 }
 
-func LoadSetting(b interface{}) *Setting {
-	return unpackSetting(&intern.Record{b})
+func LoadSetting(ider intern.Packer, b interface{}) *Setting {
+	return unpackSetting(intern.Recorder{}, ider, intern.Record{b})
 }

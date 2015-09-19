@@ -1,113 +1,120 @@
 package intern
 
+import "fmt"
+
+type Packer interface {
+	PackString(string) Packed
+	PackInt(int) Packed
+	PackList([]Packed) Packed
+	PackPair(Packed, Packed) Packed
+	AppendToPacked(Packed, Packed) Packed
+
+	UnpackString(Packed) string
+	UnpackInt(Packed) int
+	UnpackList(Packed) []Packed
+	UnpackPair(Packed) (Packed, Packed)
+	UnpackLast(Packed) Packed
+	UnpackInit(Packed) Packed
+}
+
 type Packed interface {
-	Str() string
-	Int() int
-	Pair() (Packed, Packed)
-	List() []Packed
-	New() Packed
-	StoreInt(int) Packed
-	StoreStr(string) Packed
-	StoreList([]Packed) Packed
-	StorePair(Packed, Packed) Packed
-	Empty() Packed
-	Append(Packed) Packed
+	packable()
 }
 
-type Id int
+type ID int
 
-var (
-	strings   = make([]string, 0)
-	stringIds = make(map[string]Id)
-)
+func (id ID) packable() {}
 
-func (id *Id) StoreStr(s string) Packed {
-	result, ok := stringIds[s]
-	if !ok {
-		result = Id(len(strings))
-		strings = append(strings, s)
-		stringIds[s] = result
+type IDer struct {
+	ints      []int
+	intIDs    map[int]ID
+	strings   []string
+	stringIDs map[string]ID
+	pairs     []idPair
+	pairIDs   map[idPair]ID
+}
+
+func NewIDer() *IDer {
+	return &IDer{
+		intIDs:    make(map[int]ID),
+		stringIDs: make(map[string]ID),
+		pairIDs:   make(map[idPair]ID),
 	}
-	*id = result
-	return id
 }
 
-func (id *Id) StoreInt(n int) Packed {
-	*id = Id(n)
-	return id
-}
+var DefaultIDer Packer = NewIDer()
 
 type idPair struct {
-	a, b Id
+	a, b ID
 }
 
-var (
-	pairs   = make([]idPair, 0)
-	pairIds = make(map[idPair]Id)
-)
-
-func (id *Id) StorePair(x, y Packed) Packed {
-	pair := idPair{*x.(*Id), *y.(*Id)}
-	result, ok := pairIds[pair]
+func (ider *IDer) PackString(s string) Packed {
+	result, ok := ider.stringIDs[s]
 	if !ok {
-		result = Id(len(pairs))
-		pairs = append(pairs, pair)
-		pairIds[pair] = result
+		result = ID(len(ider.strings))
+		ider.strings = append(ider.strings, s)
+		ider.stringIDs[s] = result
 	}
-	*id = result
-	return id
-}
-
-func (id *Id) New() Packed {
-	return new(Id)
-}
-
-func (id *Id) StoreList(xs []Packed) Packed {
-	//FIXME this is an awkward way to handle the end of a list...
-	*id = Id(-1)
-	for _, x := range xs {
-		id.StorePair(x, id)
-	}
-	return id
-}
-
-func (id *Id) Empty() Packed {
-	*id = -1
-	return id
-}
-
-func (id Id) Int() int {
-	return int(id)
-}
-
-func (id Id) Str() string {
-	return strings[id]
-}
-
-func (id Id) Pair() (Packed, Packed) {
-	pair := pairs[id]
-	return &pair.a, &pair.b
-}
-
-func (id Id) List() []Packed {
-	result := make([]Packed, 0)
-	var next, p Packed
-	for id >= 0 {
-		next, p = id.Pair()
-		id = *p.(*Id)
-		result = append(result, next)
-	}
-	reverse(result)
 	return result
 }
 
-func (id Id) Init() Packed {
-	_, init := id.Pair()
+func (ider *IDer) PackInt(n int) Packed {
+	return ID(n)
+}
+
+func (ider *IDer) PackPair(x, y Packed) Packed {
+	pair := idPair{x.(ID), y.(ID)}
+	result, ok := ider.pairIDs[pair]
+	if !ok {
+		result = ID(len(ider.pairs))
+		ider.pairs = append(ider.pairs, pair)
+		ider.pairIDs[pair] = result
+	}
+	return result
+}
+
+func (ider *IDer) PackList(xs []Packed) Packed {
+	var result Packed
+	result = ID(-1)
+	for _, x := range xs {
+		result = ider.PackPair(x, result)
+	}
+	return result
+}
+
+func (ider *IDer) UnpackInt(id Packed) int {
+	return int(id.(ID))
+}
+
+func (ider *IDer) UnpackString(id Packed) string {
+	return ider.strings[id.(ID)]
+}
+
+func (ider *IDer) UnpackPair(id Packed) (Packed, Packed) {
+	pair := ider.pairs[id.(ID)]
+	return pair.a, pair.b
+}
+
+func (ider *IDer) UnpackList(x Packed) []Packed {
+	var result []Packed
+	var next Packed
+	for id := x.(ID); id >= 0; id = x.(ID) {
+		next, x = ider.UnpackPair(id)
+		result = append(result, next)
+	}
+	fmt.Println(result)
+	reverse(result)
+	fmt.Println(result)
+	return result
+}
+
+func (ider *IDer) UnpackInit(list Packed) Packed {
+	_, init := ider.UnpackPair(list)
 	return init
 }
 
-func (id Id) Last() Packed {
-	last, _ := id.Pair()
+func (ider *IDer) UnpackLast(list Packed) Packed {
+	last, _ := ider.UnpackPair(list)
 	return last
 }
 
@@ -117,7 +124,6 @@ func reverse(l []Packed) {
 	}
 }
 
-func (id *Id) Append(other Packed) Packed {
-	id.StorePair(other, id)
-	return id
+func (ider *IDer) AppendToPacked(packedList, other Packed) Packed {
+	return ider.PackPair(other, packedList)
 }

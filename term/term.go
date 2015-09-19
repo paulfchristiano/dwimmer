@@ -26,54 +26,52 @@ func (t *Template) ShowWith(ss ...string) string {
 
 var sep = "[]"
 
-func (t TemplateId) String() string {
-	return t.Template().String()
+func (t TemplateID) String(ider intern.Packer) string {
+	return ToTemplate(ider, t).String()
 }
 
 func (t Template) String() string {
 	return strings.Join(t.Parts, sep)
 }
 
-func (t TemplateId) Head() TemplateId {
+func (t TemplateID) Head() TemplateID {
 	return t
 }
 
-func (t TemplateId) Parts() []string {
-	return t.Template().Parts
+func (t TemplateID) Parts(ider intern.Packer) []string {
+	return ToTemplate(ider, t).Parts
 }
 
 type CompoundT struct {
-	TemplateId
+	TemplateID
 	args []T
 }
 
 type CompoundC struct {
-	TemplateId
+	TemplateID
 	args []C
 }
 
 type CompoundS struct {
-	TemplateId
+	TemplateID
 	args []S
 }
 
 type T interface {
-	Head() TemplateId
+	Head() TemplateID
 	Values() []T
-	Pack(intern.Packed) intern.Packed
-	String() string
+	String(intern.Packer) string
 }
 
 type C interface {
-	String() string
-	Pack(intern.Packed) intern.Packed
+	String(intern.Packer) string
 	Values() []C
 	Instantiate([]T) T
 	Uninstantiate([]string) S
 }
 
 type S interface {
-	String() string
+	String(intern.Packer) string
 	Values() []S
 	Instantiate([]string) C
 }
@@ -89,15 +87,12 @@ func interleave(as, bs []string) string {
 	return buffer.String()
 }
 
-var CompoundStringifies = 0
-
-func (t *CompoundT) String() string {
-	CompoundStringifies++
+func (t *CompoundT) String(ider intern.Packer) string {
 	args := make([]string, len(t.args))
 	for i, arg := range t.args {
-		args[i] = fmt.Sprintf("[%s]", arg.String())
+		args[i] = fmt.Sprintf("[%s]", arg.String(ider))
 	}
-	return interleave(t.Parts(), args)
+	return interleave(ToTemplate(ider, t.Head()).Parts, args)
 }
 
 func (t *CompoundT) Values() []T {
@@ -109,7 +104,7 @@ func (t *CompoundC) Instantiate(ts []T) T {
 	for i, arg := range t.args {
 		args[i] = arg.Instantiate(ts)
 	}
-	return &CompoundT{t.TemplateId, args}
+	return &CompoundT{t.TemplateID, args}
 }
 
 func (t *CompoundC) Uninstantiate(names []string) S {
@@ -125,22 +120,22 @@ func (t *CompoundS) Instantiate(names []string) C {
 	for i, arg := range t.args {
 		args[i] = arg.Instantiate(names)
 	}
-	return &CompoundC{t.TemplateId, args}
+	return &CompoundC{t.TemplateID, args}
 }
 
-func (t *CompoundC) String() string {
+func (t *CompoundC) String(ider intern.Packer) string {
 	args := make([]string, len(t.args))
 	for i, arg := range t.args {
-		args[i] = fmt.Sprintf("[%s]", arg.String())
+		args[i] = fmt.Sprintf("[%s]", arg.String(ider))
 	}
-	return interleave(t.Parts(), args)
+	return interleave(ToTemplate(ider, t.Head()).Parts, args)
 }
-func (t *CompoundS) String() string {
+func (t *CompoundS) String(ider intern.Packer) string {
 	args := make([]string, len(t.args))
 	for i, arg := range t.args {
-		args[i] = fmt.Sprintf("[%s]", arg.String())
+		args[i] = fmt.Sprintf("[%s]", arg.String(ider))
 	}
-	return interleave(t.Parts(), args)
+	return interleave(ToTemplate(ider, t.Head()).Parts, args)
 }
 func (t *CompoundC) Values() []C {
 	return t.args
@@ -149,24 +144,24 @@ func (t *CompoundS) Values() []S {
 	return t.args
 }
 
-func Make(ss ...string) TemplateId {
+func Make(ss ...string) TemplateID {
 	parts := make([]string, 0)
 	for _, s := range ss {
 		parts = append(parts, strings.Split(s, sep)...)
 	}
-	return IdTemplate(&Template{parts})
+	return IDTemplate(&Template{parts})
 }
 
-func (t TemplateId) T(ts ...T) T {
+func (t TemplateID) T(ts ...T) T {
 	if t.Slots() != len(ts) {
 		panic(fmt.Sprintf("instantiating %v with arguments %v", t.String(), ts))
 	}
 	return &CompoundT{t, ts}
 }
-func (t TemplateId) C(cs ...C) C {
+func (t TemplateID) C(cs ...C) C {
 	return &CompoundC{t, cs}
 }
-func (t TemplateId) S(ss ...S) S {
+func (t TemplateID) S(ss ...S) S {
 	if len(t.Template().Parts) != len(ss)+1 {
 		panic(fmt.Sprintf("instatiating %v with arguments %v", t, ss))
 	}
@@ -205,7 +200,7 @@ func (r ReferenceC) Values() []C {
 	return make([]C, 0)
 }
 
-func (r ReferenceC) String() string {
+func (r ReferenceC) String(ider intern.Packer) string {
 	return fmt.Sprintf("#%d", r.Index)
 }
 
@@ -222,7 +217,7 @@ func (r ReferenceS) Instantiate(names []string) C {
 	panic(fmt.Sprintf("tried to instantiate a ReferenceS with name %v in the enviornment %v", r.name, names))
 }
 
-func (r ReferenceS) String() string {
+func (r ReferenceS) String(ider intern.Packer) string {
 	return fmt.Sprintf("#%s", r.name)
 }
 
