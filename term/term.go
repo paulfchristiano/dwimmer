@@ -89,7 +89,10 @@ func interleave(as, bs []string) string {
 	return buffer.String()
 }
 
+var CompoundStringifies = 0
+
 func (t *CompoundT) String() string {
+	CompoundStringifies++
 	args := make([]string, len(t.args))
 	for i, arg := range t.args {
 		args[i] = fmt.Sprintf("[%s]", arg.String())

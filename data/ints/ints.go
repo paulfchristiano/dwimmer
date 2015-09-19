@@ -52,28 +52,52 @@ func testLess(d dynamics.Dwimmer, s *term.SettingT, n, m term.T) term.T {
 	}
 	return core.Answer.T(core.No.T())
 }
+func testLessOrEqual(d dynamics.Dwimmer, s *term.SettingT, n, m term.T) term.T {
+	if int(n.(term.Int)) <= int(m.(term.Int)) {
+		return core.Answer.T(core.Yes.T())
+	}
+	return core.Answer.T(core.No.T())
+}
+func testMore(d dynamics.Dwimmer, s *term.SettingT, n, m term.T) term.T {
+	if int(n.(term.Int)) > int(m.(term.Int)) {
+		return core.Answer.T(core.Yes.T())
+	}
+	return core.Answer.T(core.No.T())
+}
+func testMoreOrEqual(d dynamics.Dwimmer, s *term.SettingT, n, m term.T) term.T {
+	if int(n.(term.Int)) >= int(m.(term.Int)) {
+		return core.Answer.T(core.Yes.T())
+	}
+	return core.Answer.T(core.No.T())
+}
 
 var (
-	Plus  = term.Make("what is [] + []?")
-	Times = term.Make("what is [] * []?")
-	Minus = term.Make("what is [] - []?")
-	Less  = term.Make("is [] less than []?")
-	Equal = term.Make("is [] equal to []?")
+	Plus        = term.Make("what is [] + []?")
+	Times       = term.Make("what is [] * []?")
+	Minus       = term.Make("what is [] - []?")
+	Equal       = term.Make("is [] equal to []?")
+	Less        = term.Make("is [] less than []?")
+	More        = term.Make("is [] greater than []?")
+	LessOrEqual = term.Make("is [] at most []?")
+	MoreOrEqual = term.Make("is [] at least []?")
 )
 
 func init() {
-	QNames := []term.TemplateId{Plus, Times, Minus, Equal, Less}
+	QNames := []term.TemplateId{Plus, Times, Minus, Equal, Less, More, LessOrEqual, MoreOrEqual}
 	QFuncs := [](func(dynamics.Dwimmer, *term.SettingT, ...term.T) term.T){
 		dynamics.Args2(addNative),
 		dynamics.Args2(multiplyNative),
 		dynamics.Args2(subtractNative),
 		dynamics.Args2(testEquality),
 		dynamics.Args2(testLess),
+		dynamics.Args2(testMore),
+		dynamics.Args2(testLessOrEqual),
+		dynamics.Args2(testMoreOrEqual),
 	}
 
 	for i := range QNames {
 		s := term.InitS()
-		s.AppendTemplate(QNames[i], "a", "b")
+		s = dynamics.ExpectQuestion(s, QNames[i], "Q", "a", "b")
 		s = dynamics.AddSimple(s, term.ViewS(term.Sr("a")))
 		s.AppendTemplate(term.Int(0).Head())
 		s = dynamics.AddSimple(s, term.ViewS(term.Sr("b")))
@@ -83,11 +107,11 @@ func init() {
 }
 
 func addNative(d dynamics.Dwimmer, s *term.SettingT, n, m term.T) term.T {
-	return core.Answer.T(term.Int(int(n.(term.Int)) + int(n.(term.Int))))
+	return core.Answer.T(term.Int(int(n.(term.Int)) + int(m.(term.Int))))
 }
 func subtractNative(d dynamics.Dwimmer, s *term.SettingT, n, m term.T) term.T {
-	return core.Answer.T(term.Int(int(n.(term.Int)) - int(n.(term.Int))))
+	return core.Answer.T(term.Int(int(n.(term.Int)) - int(m.(term.Int))))
 }
 func multiplyNative(d dynamics.Dwimmer, s *term.SettingT, n, m term.T) term.T {
-	return core.Answer.T(term.Int(int(n.(term.Int)) * int(n.(term.Int))))
+	return core.Answer.T(term.Int(int(n.(term.Int)) * int(m.(term.Int))))
 }

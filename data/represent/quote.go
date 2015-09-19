@@ -4,9 +4,7 @@ import (
 	"fmt"
 
 	"github.com/paulfchristiano/dwimmer/data/core"
-	"github.com/paulfchristiano/dwimmer/data/ints"
 	"github.com/paulfchristiano/dwimmer/data/lists"
-	"github.com/paulfchristiano/dwimmer/data/strings"
 	"github.com/paulfchristiano/dwimmer/dynamics"
 	"github.com/paulfchristiano/dwimmer/term"
 )
@@ -25,6 +23,7 @@ var (
 		term.Ask:    term.Make("the parametrized action that asks the instantiation of its first argument"),
 		term.Replace: term.Make("the parametrized action that replaces the line given by its first index with " +
 			"with the instantiation of its first argument"),
+		term.Replay: term.Make("the parametrized action that replays the line given by its first index"),
 		term.Clarify: term.Make("the parametrized action that sends the instantiation of its first argument " +
 			"to the instantiation of its second argument"),
 		term.Correct: term.Make("the parametrized action that prompts the user to correct its first index"),
@@ -34,8 +33,8 @@ var (
 
 	QuotedCompoundC = term.Make("the constructor that has template [] and arguments formed by " +
 		"instantiating each constructor in []")
-	QuotedReferenceC = term.Make("the constructor that returns the []th argument of the environment " +
-		"where it is instantiated")
+	QuotedReferenceC = term.Make("the constructor that returns the argument that comes after [] " +
+		"others in the environment where it is instantiated")
 	QuotedConstC = term.Make("the constructor that returns the term []")
 
 	QuotedCompoundT = term.Make("the term with head [] and arguments []")
@@ -43,6 +42,8 @@ var (
 	QuotedStrT      = term.Make("a term wrapping the native string []")
 	QuotedWrapperT  = term.Make("a term referring to the go object []")
 	QuotedQuoteT    = term.Make("a term referring to the representation of []")
+
+	QuotedChannel = term.Make("a channel for sending messages to the setting []")
 
 	QuotedSimpleTransition = term.Make("the transition that takes the action []")
 	QuotedNativeTransition = term.Make("the transition that applies the Go function [] " +
@@ -130,7 +131,7 @@ func C(c term.C) term.T {
 		}
 		return QuotedCompoundC.T(Template(c.Head()), List(args))
 	case term.ReferenceC:
-		return QuotedReferenceC.T(term.Int(c.Index))
+		return QuotedReferenceC.T(Int(c.Index))
 	case term.ConstC:
 		return QuotedConstC.T(T(c.Val))
 	}
@@ -182,7 +183,7 @@ func getQuotedHead(d dynamics.Dwimmer, s *term.SettingT, q term.T) term.T {
 
 func init() {
 	s := term.InitS()
-	s.AppendTemplate(Explicit, "t")
+	s = dynamics.ExpectQuestion(s, Explicit, "Q", "t")
 	s = dynamics.AddSimple(s, term.ViewS(term.Sr("t")))
 	s.AppendTemplate(term.Quoted{}.Head())
 	dynamics.AddNative(s, dynamics.Args1(makeExplicit), "t")
@@ -193,26 +194,32 @@ func Ch(c rune) term.T {
 }
 
 func Str(s string) term.T {
-	runes := make([]term.T, 0)
-	for _, c := range s {
-		runes = append(runes, strings.Rune.T(Int(int(c))))
-	}
-	return strings.ByRunes.T(List(runes))
+	return term.Str(s)
+	/*
+		runes := make([]term.T, 0)
+		for _, c := range s {
+			runes = append(runes, strings.Rune.T(Int(int(c))))
+		}
+		return strings.ByRunes.T(List(runes))
+	*/
 }
 
 func Int(n int) term.T {
-	switch {
-	case n == 0:
-		return ints.Zero.T()
-	case n == 1:
-		return ints.One.T()
-	case n < 0:
-		return ints.Negative.T(Int(-n))
-	case n%2 == 0:
-		return ints.Double.T(Int(n / 2))
-	case n%2 == 1:
-		return ints.DoublePlusOne.T(Int(n / 2))
-	default:
-		panic("unreachable")
-	}
+	return term.Int(n)
+	/*
+		switch {
+		case n == 0:
+			return ints.Zero.T()
+		case n == 1:
+			return ints.One.T()
+		case n < 0:
+			return ints.Negative.T(Int(-n))
+		case n%2 == 0:
+			return ints.Double.T(Int(n / 2))
+		case n%2 == 1:
+			return ints.DoublePlusOne.T(Int(n / 2))
+		default:
+			panic("unreachable")
+		}
+	*/
 }

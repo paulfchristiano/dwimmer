@@ -30,13 +30,36 @@ var (
 		"with one of the heads defined in the file quote.go")
 	UnquoteList = term.Make("what list is []? the answer should be represented " +
 		"with one of the heads referenced in the file quote.go")
-	UnquoteSetting = term.Make("what setting is []? the answer should be represented " +
+	UnquoteSetting = term.Make("what setting template is []? the answer should be represented " +
+		"with one of the heads defined in the file quote.go")
+	UnquoteChannel = term.Make("what channel is []? the answer should be represented " +
+		"with one of the heads defined in the file quote.go")
+	UnquoteSettingT = term.Make("what concrete setting is []? the answer should be represented " +
 		"with one of the heads defined in the file quote.go")
 	UnquoteTransition = term.Make("what transition is []? the answer should be represented " +
 		"with one of the heads defined in the file quote.go")
 	UnquoteSettingLine = term.Make("what line of a setting is []? the answer should be  " +
 		"represented with one of the heads in quote.go")
 )
+
+func ToChannel(d dynamics.Dwimmer, t term.T) (term.T, term.T) {
+	switch t.Head() {
+	case QuotedChannel.Head():
+		setting, err := ToSettingT(d, t.Values()[0])
+		if err != nil {
+			return nil, term.Make("asked to convert a channel, "+
+				"but received [] while converting setting []").T(err, t.Values()[0])
+		}
+		return term.MakeChannel(setting), nil
+	case term.Channel{}.Head():
+		return t, nil
+	}
+	reduced, err := d.Answer(UnquoteChannel.T(t))
+	if err != nil {
+		return nil, err
+	}
+	return ToChannel(d, reduced)
+}
 
 func ToTransition(d dynamics.Dwimmer, t term.T) (dynamics.Transition, term.T) {
 	switch t.Head() {
@@ -421,7 +444,7 @@ func ToSettingT(d dynamics.Dwimmer, t term.T) (*term.SettingT, term.T) {
 	case QuotedNil.Head():
 		return nil, nil
 	}
-	reduced, err := d.Answer(UnquoteSetting.T(t))
+	reduced, err := d.Answer(UnquoteSettingT.T(t))
 	if err != nil {
 		return nil, err
 	}
@@ -429,7 +452,7 @@ func ToSettingT(d dynamics.Dwimmer, t term.T) (*term.SettingT, term.T) {
 }
 
 func init() {
-	s := term.InitS().AppendTemplate(UnquoteInt, "x")
+	s := dynamics.ExpectQuestion(term.InitS(), UnquoteInt, "Q", "x")
 	s = dynamics.AddSimple(s, term.ViewS(term.Sr("x")))
 	dynamics.AddSimple(s.Copy().AppendTemplate(ints.Zero), term.ReturnS(core.Answer.S(term.Sc(term.Int(0)))))
 	dynamics.AddSimple(s.Copy().AppendTemplate(ints.One), term.ReturnS(core.Answer.S(term.Sc(term.Int(1)))))

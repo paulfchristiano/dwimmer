@@ -18,3 +18,15 @@ type Dwimmer interface {
 
 	Close()
 }
+
+var DefaultInitializers []term.T
+
+func AddInitializer(t term.T) {
+	DefaultInitializers = append(DefaultInitializers, t)
+}
+
+var SetupState = term.Make("initialize the interpreter's state")
+
+func init() {
+	AddInitializer(SetupState.T())
+}

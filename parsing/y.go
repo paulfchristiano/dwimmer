@@ -63,86 +63,87 @@ const yyEofCode = 1
 const yyErrCode = 2
 const yyMaxDepth = 200
 
-//line parser.y:66
+//line parser.y:67
 //line yacctab:1
 var yyExca = [...]int{
 	-1, 1,
 	1, -1,
 	-2, 0,
-	-1, 4,
-	25, 24,
-	-2, 4,
-	-1, 7,
-	25, 25,
-	-2, 8,
 }
 
-const yyNprod = 37
+const yyNprod = 40
 const yyPrivate = 57344
 
 var yyTokenNames []string
 var yyStates []string
 
-const yyLast = 99
+const yyLast = 138
 
 var yyAct = [...]int{
 
-	5, 8, 2, 3, 32, 46, 45, 30, 31, 48,
-	21, 22, 17, 23, 4, 15, 19, 35, 20, 49,
-	38, 39, 24, 25, 13, 16, 26, 27, 28, 29,
-	21, 22, 36, 23, 41, 42, 37, 40, 44, 7,
-	1, 47, 24, 25, 18, 43, 26, 27, 28, 29,
-	50, 21, 22, 36, 23, 33, 12, 11, 10, 21,
-	22, 36, 23, 24, 25, 9, 34, 26, 27, 28,
-	29, 24, 25, 14, 6, 26, 27, 28, 29, 21,
-	22, 0, 23, 0, 0, 0, 0, 0, 0, 0,
-	0, 24, 25, 0, 0, 26, 27, 28, 29,
+	5, 2, 3, 32, 52, 45, 51, 46, 33, 54,
+	21, 22, 17, 23, 7, 15, 19, 39, 20, 34,
+	42, 43, 24, 25, 13, 16, 26, 27, 28, 29,
+	30, 31, 35, 47, 36, 8, 41, 50, 4, 58,
+	56, 55, 48, 44, 1, 53, 18, 12, 11, 57,
+	21, 22, 40, 23, 37, 10, 59, 60, 9, 61,
+	14, 6, 24, 25, 0, 49, 26, 27, 28, 29,
+	30, 31, 21, 22, 40, 23, 0, 0, 0, 0,
+	0, 0, 0, 0, 24, 25, 0, 38, 26, 27,
+	28, 29, 30, 31, 21, 22, 40, 23, 0, 0,
+	0, 0, 0, 0, 0, 0, 24, 25, 0, 0,
+	26, 27, 28, 29, 30, 31, 21, 22, 0, 23,
+	0, 0, 0, 0, 0, 0, 0, 0, 24, 25,
+	0, 0, 26, 27, 28, 29, 30, 31,
 }
 var yyPact = [...]int{
 
-	-24, -1000, 8, -1000, 35, -1000, 6, -2, -21, -1000,
-	-1000, -1000, -1000, -1000, -1000, -1000, 47, -1000, 75, -1000,
+	-25, -1000, 32, -1000, 10, -1000, 6, -6, 28, -1000,
+	-1000, -1000, -1000, -1000, -1000, -1000, 68, -1000, 112, -1000,
 	-1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000,
-	33, -1000, 31, 26, -1000, -1000, -1000, -1000, -5, -8,
-	-1000, 3, -1000, -1000, 55, -1000, -1000, -1000, 15, -1000,
-	-1000,
+	-1000, -1000, 39, -1000, 1, 27, 38, 46, -1000, -1000,
+	-1000, -1000, -5, -9, -1000, 3, 37, 36, -1000, -1000,
+	90, -1000, -1000, -1000, 35, -1000, -1000, -1000, -1000, -1000,
+	-1000, -1000,
 }
 var yyPgo = [...]int{
 
-	0, 0, 74, 73, 65, 58, 57, 56, 17, 44,
-	38, 40, 1,
+	0, 0, 61, 60, 58, 55, 48, 47, 17, 46,
+	37, 44,
 }
 var yyR1 = [...]int{
 
-	0, 11, 11, 11, 11, 11, 11, 1, 2, 2,
-	4, 4, 4, 4, 4, 3, 3, 6, 6, 5,
-	7, 10, 10, 10, 12, 12, 9, 9, 9, 9,
-	9, 9, 9, 9, 9, 8, 8,
+	0, 11, 11, 11, 11, 11, 11, 11, 11, 11,
+	1, 2, 2, 4, 4, 4, 4, 4, 3, 3,
+	6, 6, 5, 7, 10, 10, 10, 9, 9, 9,
+	9, 9, 9, 9, 9, 9, 9, 9, 8, 8,
 }
 var yyR2 = [...]int{
 
-	0, 6, 4, 8, 2, 2, 4, 1, 0, 2,
-	1, 1, 1, 1, 1, 3, 3, 3, 2, 1,
-	1, 1, 1, 2, 0, 1, 1, 1, 1, 1,
-	1, 1, 1, 1, 1, 1, 2,
+	0, 6, 4, 2, 2, 4, 8, 7, 7, 6,
+	1, 0, 2, 1, 1, 1, 1, 1, 3, 3,
+	3, 2, 1, 1, 1, 1, 2, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 2,
 }
 var yyChk = [...]int{
 
-	-1000, -11, 26, 27, 6, -1, -2, 4, -12, -4,
+	-1000, -11, 26, 27, 6, -1, -2, 4, 25, -4,
 	-5, -6, -7, -8, -3, 9, 19, 6, -9, 10,
 	12, 4, 5, 7, 16, 17, 20, 21, 22, 23,
-	9, -1, 25, -10, 19, -8, 6, -8, -1, -1,
-	4, -12, 4, 19, -10, 11, 13, -1, 6, 4,
-	-1,
+	24, 25, 9, -1, 25, 4, 6, -10, 19, -8,
+	6, -8, -1, -1, 4, 4, 6, 6, 4, 19,
+	-10, 11, 13, -1, 6, 4, 4, -1, 4, -1,
+	-1, -1,
 }
 var yyDef = [...]int{
 
-	0, -2, 0, 8, -2, 5, 7, -2, 0, 9,
-	10, 11, 12, 13, 14, 19, 0, 20, 35, 8,
-	8, 26, 27, 28, 29, 30, 31, 32, 33, 34,
-	6, 2, 24, 0, 18, 21, 22, 36, 0, 0,
-	8, 0, 25, 17, 23, 15, 16, 1, 0, 8,
-	3,
+	0, -2, 0, 11, 3, 4, 10, 11, 0, 12,
+	13, 14, 15, 16, 17, 22, 0, 23, 38, 11,
+	11, 27, 28, 29, 30, 31, 32, 33, 34, 35,
+	36, 37, 5, 2, 0, 0, 0, 0, 21, 24,
+	25, 39, 0, 0, 11, 0, 0, 0, 11, 20,
+	26, 18, 19, 1, 0, 11, 11, 9, 11, 7,
+	8, 6,
 }
 var yyTok1 = [...]int{
 
@@ -521,101 +522,119 @@ yydefault:
 			yylex.(*lexer).setActionResult(yyDollar[2].string, yyDollar[4].expr, -1)
 		}
 	case 3:
-		yyDollar = yyS[yypt-8 : yypt+1]
+		yyDollar = yyS[yypt-2 : yypt+1]
 		//line parser.y:32
 		{
-			yylex.(*lexer).setTransitiveActionResult(yyDollar[2].string, yyDollar[6].string, yyDollar[8].expr)
+			yylex.(*lexer).setActionResult(yyDollar[2].string, nil, -1)
 		}
 	case 4:
 		yyDollar = yyS[yypt-2 : yypt+1]
 		//line parser.y:33
 		{
-			yylex.(*lexer).setActionResult(yyDollar[2].string, nil, -1)
-		}
-	case 5:
-		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:34
-		{
 			yylex.(*lexer).setTermResult(yyDollar[2].expr)
 		}
-	case 6:
+	case 5:
 		yyDollar = yyS[yypt-4 : yypt+1]
-		//line parser.y:35
+		//line parser.y:34
 		{
 			{
 				yylex.(*lexer).setActionResult(yyDollar[2].string, nil, yyDollar[4].int)
 			}
 		}
+	case 6:
+		yyDollar = yyS[yypt-8 : yypt+1]
+		//line parser.y:35
+		{
+			yylex.(*lexer).setTransitiveActionResult(yyDollar[2].string, yyDollar[6].string, yyDollar[8].expr)
+		}
+	case 7:
+		yyDollar = yyS[yypt-7 : yypt+1]
+		//line parser.y:36
+		{
+			yylex.(*lexer).setTransitiveActionResult(yyDollar[2].string, yyDollar[5].string, yyDollar[7].expr)
+		}
 	case 8:
+		yyDollar = yyS[yypt-7 : yypt+1]
+		//line parser.y:37
+		{
+			yylex.(*lexer).setTransitiveActionResult(yyDollar[2].string, yyDollar[5].string, yyDollar[7].expr)
+		}
+	case 9:
+		yyDollar = yyS[yypt-6 : yypt+1]
+		//line parser.y:38
+		{
+			yylex.(*lexer).setTransitiveActionResult(yyDollar[2].string, yyDollar[4].string, yyDollar[6].expr)
+		}
+	case 11:
 		yyDollar = yyS[yypt-0 : yypt+1]
-		//line parser.y:39
+		//line parser.y:42
 		{
 			yyVAL.expr = EmptyExpr()
 		}
-	case 9:
+	case 12:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:40
+		//line parser.y:43
 		{
 			yyVAL.expr = yyDollar[1].expr
 			yyVAL.expr.append(yyDollar[2].clause)
 		}
-	case 13:
+	case 16:
 		yyDollar = yyS[yypt-1 : yypt+1]
-		//line parser.y:43
+		//line parser.y:46
 		{
 			yyVAL.clause = exprText(yyDollar[1].string)
 		}
-	case 14:
+	case 17:
 		yyDollar = yyS[yypt-1 : yypt+1]
-		//line parser.y:44
+		//line parser.y:47
 		{
 			yyVAL.clause = exprTerm{toC(yyDollar[1].expr)}
 		}
-	case 15:
-		yyDollar = yyS[yypt-3 : yypt+1]
-		//line parser.y:46
-		{
-			yyVAL.expr = yyDollar[2].expr
-		}
-	case 16:
-		yyDollar = yyS[yypt-3 : yypt+1]
-		//line parser.y:47
-		{
-			yyVAL.expr = yyDollar[2].expr
-		}
-	case 17:
+	case 18:
 		yyDollar = yyS[yypt-3 : yypt+1]
 		//line parser.y:49
 		{
+			yyVAL.expr = yyDollar[2].expr
+		}
+	case 19:
+		yyDollar = yyS[yypt-3 : yypt+1]
+		//line parser.y:50
+		{
+			yyVAL.expr = yyDollar[2].expr
+		}
+	case 20:
+		yyDollar = yyS[yypt-3 : yypt+1]
+		//line parser.y:52
+		{
 			yyVAL.clause = exprTerm{term.ConstC{represent.Str(yyDollar[2].string)}}
 		}
-	case 18:
+	case 21:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:50
+		//line parser.y:53
 		{
 			yyVAL.clause = exprTerm{term.ConstC{represent.Str("")}}
 		}
-	case 19:
+	case 22:
 		yyDollar = yyS[yypt-1 : yypt+1]
-		//line parser.y:52
+		//line parser.y:55
 		{
 			yyVAL.clause = exprTerm{term.ConstC{represent.Int(yyDollar[1].int)}}
 		}
-	case 20:
+	case 23:
 		yyDollar = yyS[yypt-1 : yypt+1]
-		//line parser.y:54
+		//line parser.y:57
 		{
 			yyVAL.clause = yylex.(*lexer).parseWord(yyDollar[1].string)
 		}
-	case 23:
+	case 26:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:56
+		//line parser.y:59
 		{
 			yyVAL.string = yyDollar[1].string + yyDollar[2].string
 		}
-	case 36:
+	case 39:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:64
+		//line parser.y:65
 		{
 			yyVAL.string = yyDollar[1].string + yyDollar[2].string
 		}

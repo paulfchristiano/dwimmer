@@ -132,6 +132,13 @@ func InitS() *SettingS {
 
 func (s *SettingS) AppendTemplate(t TemplateId, names ...string) *SettingS {
 	s.Setting = s.Setting.Append(t, len(names))
+	for i := range names {
+		for j := range s.Names {
+			if names[i] == s.Names[j] {
+				panic("duplicate name!")
+			}
+		}
+	}
 	s.Names = append(s.Names, names...)
 	return s
 }

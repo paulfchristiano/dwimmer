@@ -42,15 +42,15 @@ func TestEncoding(t *testing.T) {
 	cc := term.ConstC{template.T(term.Make("stub").T())}
 	action := term.ReturnC(c)
 	settingS := term.InitS().AppendTemplate(template, "q").AppendAction(action)
-	setting := settingS.Setting()
+	setting := settingS.Setting
 	collection.Set(1, term.SaveSetting(setting))
 	collection.Set(2, term.SaveC(cc))
 	found := 0
 	for _, x := range collection.All() {
 		if x["key"] == 1 {
 			newVal := term.LoadSetting(x["value"])
-			newId := term.IdSetting(newVal)
-			oldId := term.IdSetting(setting)
+			newId := newVal.Id
+			oldId := setting.Id
 			if newId != oldId {
 				t.Errorf("%v != %v", newVal, setting)
 			}
@@ -71,8 +71,8 @@ func TestEncoding(t *testing.T) {
 	}
 	{
 		newSetting := term.LoadSetting(collection.Get(1))
-		newId := term.IdSetting(newSetting)
-		oldId := term.IdSetting(setting)
+		newId := newSetting.Id
+		oldId := setting.Id
 		if newId != oldId {
 			t.Errorf("%v != %v", newSetting, setting)
 		}

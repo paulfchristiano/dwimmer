@@ -29,10 +29,10 @@ func ApplicationSetting2() *term.SettingS {
 
 func init() {
 	applyState = term.InitS()
-	applyState.AppendTemplate(Apply, "f", "x")
+	applyState = dynamics.ExpectQuestion(applyState, Apply, "Q1", "f", "x")
 	applyState = dynamics.AddSimple(applyState, term.ViewS(term.Sr("f")))
 	applyState2 = term.InitS()
-	applyState2.AppendTemplate(Apply2, "f", "x", "y")
+	applyState2 = dynamics.ExpectQuestion(applyState2, Apply2, "f", "x", "y")
 	applyState2 = dynamics.AddSimple(applyState2, term.ViewS(term.Sr("f")))
 }
 
@@ -40,9 +40,9 @@ func init() {
 	s := ApplicationSetting()
 	s.AppendTemplate(Compose, "f1", "f2")
 	s = dynamics.AddSimple(s, term.AskS(Apply.S(term.Sr("f1"), term.Sr("x"))))
-	s.AppendTemplate(core.Answer, "y")
+	s = dynamics.ExpectAnswer(s, core.Answer, "A1", "y")
 	s = dynamics.AddSimple(s, term.AskS(Apply.S(term.Sr("f2"), term.Sr("y"))))
-	s.AppendTemplate(core.Answer, "z")
+	s = dynamics.ExpectAnswer(s, core.Answer, "A2", "z")
 	s = dynamics.AddSimple(s, term.ReturnS(term.Sr("z")))
 }
 
@@ -57,28 +57,28 @@ func init() {
 
 	t = s.Copy().AppendTemplate(lists.Singleton, "y")
 	t = dynamics.AddSimple(t, term.AskS(Apply.S(term.Sr("g"), term.Sr("y"))))
-	t.AppendTemplate(core.Answer, "newy")
+	t = dynamics.ExpectAnswer(t, core.Answer, "A1", "newy")
 	t = dynamics.AddSimple(t, term.ReturnS(lists.Singleton.S(term.Sr("y"))))
 
 	t = s.Copy().AppendTemplate(lists.Cons, "head", "tail")
 	t = dynamics.AddSimple(t, term.AskS(Apply.S(term.Sr("g"), term.Sr("head"))))
-	t.AppendTemplate(core.Answer, "newhead")
+	t = dynamics.ExpectAnswer(t, core.Answer, "A1", "newhead")
 	t = dynamics.AddSimple(t, term.AskS(Apply.S(term.Sr("f"), term.Sr("tail"))))
-	t.AppendTemplate(core.Answer, "newtail")
+	t = dynamics.ExpectAnswer(t, core.Answer, "A2", "newtail")
 	t = dynamics.AddSimple(t, term.ReturnS(lists.Cons.S(term.Sr("newhead"), term.Sr("newtail"))))
 
 	t = s.Copy().AppendTemplate(lists.Snoc, "init", "last")
 	t = dynamics.AddSimple(t, term.AskS(Apply.S(term.Sr("g"), term.Sr("last"))))
-	t.AppendTemplate(core.Answer, "newlast")
+	t = dynamics.ExpectAnswer(t, core.Answer, "A1", "newlast")
 	t = dynamics.AddSimple(t, term.AskS(Apply.S(term.Sr("f"), term.Sr("init"))))
-	t.AppendTemplate(core.Answer, "newinit")
+	t = dynamics.ExpectAnswer(t, core.Answer, "A2", "newinit")
 	t = dynamics.AddSimple(t, term.ReturnS(lists.Snoc.S(term.Sr("newinit"), term.Sr("newlast"))))
 
 	t = s.Copy().AppendTemplate(lists.Concat, "a", "b")
 	t = dynamics.AddSimple(t, term.AskS(Apply.S(term.Sr("f"), term.Sr("a"))))
-	t.AppendTemplate(core.Answer, "newa")
+	t = dynamics.ExpectAnswer(t, core.Answer, "A1", "newa")
 	t = dynamics.AddSimple(t, term.AskS(Apply.S(term.Sr("f"), term.Sr("b"))))
-	t.AppendTemplate(core.Answer, "newb")
+	t = dynamics.ExpectAnswer(t, core.Answer, "A2", "newb")
 	t = dynamics.AddSimple(t, term.ReturnS(lists.Concat.S(term.Sr("newa"), term.Sr("newb"))))
 }
 
@@ -93,27 +93,27 @@ func init() {
 
 	t = s.Copy().AppendTemplate(lists.Cons, "head", "tail")
 	t = dynamics.AddSimple(t, term.AskS(Apply2.S(term.Sr("f"), term.Sr("x"), term.Sr("head"))))
-	t.AppendTemplate(core.Answer, "y")
+	t = dynamics.ExpectAnswer(t, core.Answer, "A1", "y")
 	t = dynamics.AddSimple(t, term.AskS(Fold.S(term.Sr("f"), term.Sr("tail"), term.Sr("y"))))
-	t.AppendTemplate(core.Answer, "A")
+	t = dynamics.ExpectAnswer(t, core.Answer, "A2", "A")
 	t = dynamics.AddSimple(t, term.ReturnS(term.Sr("A")))
 
 	t = s.Copy().AppendTemplate(lists.Snoc, "init", "last")
 	t = dynamics.AddSimple(t, term.AskS(Fold.S(term.Sr("f"), term.Sr("init"), term.Sr("x"))))
-	t.AppendTemplate(core.Answer, "y")
+	t = dynamics.ExpectAnswer(t, core.Answer, "A1", "y")
 	t = dynamics.AddSimple(t, term.AskS(Apply2.S(term.Sr("f"), term.Sr("y"), term.Sr("last"))))
-	t.AppendTemplate(core.Answer, "A")
+	t = dynamics.ExpectAnswer(t, core.Answer, "A2", "A")
 	t = dynamics.AddSimple(t, term.ReturnS(term.Sr("A")))
 
 	t = s.Copy().AppendTemplate(lists.Concat, "a", "b")
 	t = dynamics.AddSimple(t, term.AskS(Fold.S(term.Sr("f"), term.Sr("a"), term.Sr("x"))))
-	t.AppendTemplate(core.Answer, "y")
+	t = dynamics.ExpectAnswer(t, core.Answer, "A1", "y")
 	t = dynamics.AddSimple(t, term.AskS(Fold.S(term.Sr("f"), term.Sr("b"), term.Sr("y"))))
-	t.AppendTemplate(core.Answer, "A")
+	t = dynamics.ExpectAnswer(t, core.Answer, "A2", "A")
 	t = dynamics.AddSimple(t, term.ReturnS(term.Sr("A")))
 
 	t = s.Copy().AppendTemplate(lists.Singleton, "y")
 	t = dynamics.AddSimple(t, term.AskS(Apply2.S(term.Sr("f"), term.Sr("x"), term.Sr("y"))))
-	t.AppendTemplate(core.Answer, "A")
+	t = dynamics.ExpectAnswer(core.Answer, "A1", "A")
 	t = dynamics.AddSimple(t, term.ReturnS(term.Sr("A")))
 }

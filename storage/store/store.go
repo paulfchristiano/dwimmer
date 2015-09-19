@@ -12,10 +12,10 @@ var (
 )
 
 func init() {
-	s := term.InitS().AppendTemplate(GetState)
+	s := dynamics.ExpectQuestion(term.InitS(), GetState, "Q")
 	dynamics.AddNative(s, dynamics.Args0(getState))
 
-	s = term.InitS().AppendTemplate(SetState, "s")
+	s = dynamics.ExpectQuestion(term.InitS(), SetState, "Q", "s")
 	dynamics.AddNative(s, dynamics.Args1(setState), "s")
 }
 

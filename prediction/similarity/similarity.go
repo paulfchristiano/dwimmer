@@ -17,11 +17,17 @@ func Suggestions(d dynamics.Dwimmer, s *term.Setting, n int) ([]term.ActionC, []
 	settings, settingPriorities := analogies(d, s, n)
 	result := []term.ActionC{}
 	priorities := []float32{}
+buildingResult:
 	for i, other := range settings {
-		t, _ := d.Get(other.Id)
+		t, _ := d.Get(other)
 		simple, isSimple := t.(dynamics.SimpleTransition)
 		if isSimple {
 			action := simple.Action
+			for _, otherAction := range result {
+				if action.Id() == otherAction.Id() {
+					continue buildingResult
+				}
+			}
 			result = append(result, action)
 			priorities = append(priorities, settingPriorities[i])
 		}
@@ -67,7 +73,7 @@ func analogies(d dynamics.Dwimmer, s *term.Setting, n int) ([]*term.Setting, []f
 	i := 0
 	for j, priority := range previousPriorities {
 		analogy := previousAnalogies[j]
-		for _, setting := range d.Continuations(analogy.Id) {
+		for _, setting := range d.Continuations(analogy) {
 			fit, canMatch := match(setting.Last, lastLine)
 			if canMatch {
 				possiblePriorities.Push(prioritized{
@@ -91,7 +97,7 @@ func analogies(d dynamics.Dwimmer, s *term.Setting, n int) ([]*term.Setting, []f
 }
 
 func contenders(d dynamics.Dwimmer, l term.SettingLine, n int) ([]*term.Setting, []float32) {
-	allSettings := d.Continuations(term.Init().Id)
+	allSettings := d.Continuations(term.Init())
 	result, priorities := Top(l, allSettings, n)
 	return result, priorities
 }

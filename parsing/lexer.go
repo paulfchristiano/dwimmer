@@ -80,6 +80,8 @@ func (r *lexer) setActionResult(head string, e *Expr, n int) {
 		a = term.ViewC(t)
 	case "replace", "rewrite", "change", "jump", "set":
 		a = term.ReplaceC(t, n)
+	case "replay", "redo", "repeat":
+		a = term.ReplayC(n)
 	case "correct", "fix", "debug":
 		a = term.CorrectC(n)
 	case "meta", "self", "here", "this":

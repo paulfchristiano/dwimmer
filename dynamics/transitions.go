@@ -34,10 +34,10 @@ type TransitionTable struct {
 }
 
 type Transitions interface {
-	Save(term.SettingId, Transition)
-	Set(term.SettingId, Transition)
-	Get(term.SettingId) (Transition, bool)
-	Continuations(term.SettingId) []*term.Setting
+	Save(*term.Setting, Transition)
+	Set(*term.Setting, Transition)
+	Get(*term.Setting) (Transition, bool)
+	Continuations(*term.Setting) []*term.Setting
 }
 
 var DefaultTransitions = NewTransitionTable(database.Collection("newtransitions"))
@@ -65,7 +65,7 @@ func NewTransitionTable(C database.C) *TransitionTable {
 		}
 		setting := term.LoadSetting(settingRecord)
 		action := term.LoadActionC(actionRecord)
-		result.SetSimpleC(term.IdSetting(setting), action)
+		result.SetSimpleC(setting, action)
 	}
 	return result
 }
@@ -74,51 +74,47 @@ func (table *TransitionTable) AddContinuation(s *term.Setting) {
 	if s.Size == 0 {
 		return
 	}
-	continuations, ok := table.continuations[s.Previous.Id]
-	if !ok {
-		continuations = make([]*term.Setting, 0)
-		table.continuations[s.Previous.Id] = continuations
-	}
+	continuations := table.continuations[s.Previous.Id]
 	for _, c := range continuations {
 		if c.Last.LineId() == s.Last.LineId() {
 			return
 		}
 	}
-	continuations = append(continuations, s)
+	table.continuations[s.Previous.Id] = append(continuations, s)
 	if s.Size > 0 {
 		table.AddContinuation(s.Previous)
 	}
 }
 
-func (table *TransitionTable) Set(s term.SettingId, t Transition) {
-	table.AddContinuation(s.Setting().Rollback(-1))
-	table.table[s] = t
+func (table *TransitionTable) Set(s *term.Setting, t Transition) {
+	table.AddContinuation(s)
+	table.table[s.Id] = t
 }
 
-func (table *TransitionTable) Save(s term.SettingId, t Transition) {
+func (table *TransitionTable) Save(s *term.Setting, t Transition) {
 	table.Set(s, t)
 	switch t := t.(type) {
 	case SimpleTransition:
-		table.collection.Set(term.SaveSetting(s.Setting()), term.SaveActionC(t.Action))
+		table.collection.Set(term.SaveSetting(s), term.SaveActionC(t.Action))
 	}
 }
 
-func (t *TransitionTable) SetSimpleC(s term.SettingId, a term.ActionC) {
+func (t *TransitionTable) SetSimpleC(s *term.Setting, a term.ActionC) {
 	t.Set(s, SimpleTransition{a})
 }
 
-func (t *TransitionTable) SaveSimpleC(s term.SettingId, a term.ActionC) {
+func (t *TransitionTable) SaveSimpleC(s *term.Setting, a term.ActionC) {
 	t.Save(s, SimpleTransition{a})
 }
 
 func (t *TransitionTable) SaveSimpleS(s *term.SettingS, a term.ActionS) *term.SettingS {
 	aC := a.Instantiate(s.Names)
-	t.SaveSimpleC(s.Setting.Id, aC)
+	t.SaveSimpleC(s.Setting, aC)
 	return s.Copy().AppendAction(aC)
 }
 
-func (t *TransitionTable) Get(s term.SettingId) (Transition, bool) {
-	result, ok := t.table[s]
+func (t *TransitionTable) Get(s *term.Setting) (Transition, bool) {
+	result, ok := t.table[s.Id]
 	return result, ok
 }
 
@@ -132,8 +128,9 @@ func AddSimple(s *term.SettingS, a term.ActionS) *term.SettingS {
 }
 
 func AddNativeResponse(t term.TemplateId, n int, f func(Dwimmer, *term.SettingT, ...term.T) term.T) {
-	names := allNames[:n]
-	AddNative(term.InitS().AppendTemplate(t, names...), f, names...)
+	names := append([]string{"_Q"}, allNames[:n]...)
+	s := ExpectQuestion(term.InitS(), t, names...)
+	AddNative(s, f, allNames[:n]...)
 }
 
 func AddNative(s *term.SettingS, f func(Dwimmer, *term.SettingT, ...term.T) term.T, names ...string) {
@@ -168,9 +165,9 @@ func AddNativeTo(table *TransitionTable, s *term.SettingS,
 		}
 		return result
 	}
-	table.Save(s.Setting.Id, NativeTransition(g))
+	table.Save(s.Setting, NativeTransition(g))
 }
 
-func (table *TransitionTable) Continuations(id term.SettingId) []*term.Setting {
-	return table.continuations[id]
+func (table *TransitionTable) Continuations(s *term.Setting) []*term.Setting {
+	return table.continuations[s.Id]
 }

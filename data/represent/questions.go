@@ -12,7 +12,7 @@ var (
 
 func init() {
 	s := term.InitS()
-	s.AppendTemplate(RepresentSetting, "s")
+	s = dynamics.ExpectQuestion(s, RepresentSetting, "Q", "s")
 	dynamics.AddNative(s, dynamics.Args1(quote), "s")
 }
 

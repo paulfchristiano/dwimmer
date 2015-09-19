@@ -14,27 +14,112 @@ import (
 var (
 	ActionQ     = term.Make("what action should be taken in the setting []?")
 	FallThrough = term.Make("there is no compiled transition in the setting []; " +
-		"compile one")
-	SetTransition = term.Make("from now on, the transition [] should be made in context []")
+		"compile one if desired and specify what should be done")
+	SetTransition = term.Make("from now on, the transition [] should be made in setting []")
+	GetTransition = term.Make("what transition will be reflexively taken in setting []?")
+	AllSettings   = term.Make("what is the list of all settings " +
+		"about which data is available?")
+	GetContinuations = term.Make("what settings for which data is available " +
+		"can be formed by adding one line to []?")
+	NoCompiledAction = term.Make("there is no compiled transition in that setting")
+	TakeTransition   = term.Make("transition [] should be taken")
+	TransitionGiven  = term.Make("if [] was given as a reply to the question [], " +
+		"what transition should be taken?")
 )
 
 func init() {
 	dynamics.AddNativeResponse(ActionQ, 1, dynamics.Args1(findAction))
 	dynamics.AddNativeResponse(FallThrough, 1, dynamics.Args1(fallThrough))
+	dynamics.AddNativeResponse(SetTransition, 2, dynamics.Args2(setTransition))
+	dynamics.AddNativeResponse(GetTransition, 1, dynamics.Args1(getTransition))
+	dynamics.AddNativeResponse(GetContinuations, 1, dynamics.Args1(getContinuations))
+	dynamics.AddNativeResponse(AllSettings, 0, dynamics.Args0(allSettings))
+}
+
+func getContinuations(d dynamics.Dwimmer, s *term.SettingT, quotedSetting term.T) term.T {
+	setting, err := represent.ToSetting(d, quotedSetting)
+	if err != nil {
+		return term.Make("asked to return the continuations from a setting, " +
+			"but while converting to a setting received []").T(err)
+	}
+	continuations := d.Continuations(setting)
+	result := make([]term.T, len(continuations))
+	for i, c := range continuations {
+		result[i] = represent.Setting(c)
+	}
+	return core.Answer.T(represent.List(result))
+}
+
+func allSettings(d dynamics.Dwimmer, s *term.SettingT) term.T {
+	queue := []*term.Setting{term.Init()}
+	for k := 0; k < len(queue); k++ {
+		top := queue[k]
+		queue = append(queue, d.Continuations(top)...)
+	}
+	result := make([]term.T, len(queue))
+	for i, setting := range queue {
+		result[i] = represent.Setting(setting)
+	}
+	return core.Answer.T(represent.List(result))
+}
+
+func setTransition(d dynamics.Dwimmer, s *term.SettingT, quotedTransition, quotedSetting term.T) term.T {
+	transition, err := represent.ToTransition(d, quotedTransition)
+	if err != nil {
+		return term.Make("asked to set a setting to transition [], "+
+			"but while converting to a transition received []").T(quotedTransition, err)
+	}
+	setting, err := represent.ToSetting(d, quotedSetting)
+	if err != nil {
+		return term.Make("asked to set a transition in setting [], "+
+			"but while converting to a setting received []").T(quotedSetting, err)
+	}
+	d.Save(setting, transition)
+	return core.OK.T()
+}
+
+func getTransition(d dynamics.Dwimmer, s *term.SettingT, quotedSetting term.T) term.T {
+	setting, err := represent.ToSetting(d, quotedSetting)
+	if err != nil {
+		return term.Make("asked to get a transition in setting [], "+
+			"but while converting to a setting received []").T(quotedSetting, err)
+	}
+	result, ok := d.Get(setting)
+	if !ok {
+		return NoCompiledAction.T()
+	}
+	return core.Answer.T(represent.Transition(result))
 }
 
 func fallThrough(d dynamics.Dwimmer, s *term.SettingT, quotedSetting term.T) term.T {
-	d.Debug(quotedSetting.String())
-	setting, err := represent.ToSettingT(d, quotedSetting)
+	logger.Printf("falling through")
+	settingT, err := represent.ToSettingT(d, quotedSetting)
+	logger.Printf("extracted setting")
 	if err != nil {
 		return term.Make("asked to decide what to do in setting [], "+
 			"but while converting to a setting received []").T(quotedSetting, err)
 	}
-	settingId := setting.Setting.Id
-	action := ElicitAction(d, settingId, true)
+	action := ElicitAction(d, settingT.Setting, true)
 	transition := dynamics.SimpleTransition{action}
-	d.Save(settingId, transition)
-	return core.OK.T()
+	if shouldSave(transition) {
+		d.Save(settingT.Setting, transition)
+	}
+	return TakeTransition.T(represent.Transition(transition))
+}
+
+func shouldSave(t dynamics.Transition) bool {
+	switch t := t.(type) {
+	case dynamics.NativeTransition:
+		return true
+	case dynamics.SimpleTransition:
+		switch t.Action.Act {
+		case term.Replay, term.Replace, term.Correct:
+			return false
+		default:
+			return true
+		}
+	}
+	panic("unknown type of transition")
 }
 
 func findAction(d dynamics.Dwimmer, s *term.SettingT, quotedSetting term.T) term.T {
@@ -43,12 +128,11 @@ func findAction(d dynamics.Dwimmer, s *term.SettingT, quotedSetting term.T) term
 		return term.Make("asked to decide what to do in setting [], "+
 			"but while converting to a setting received []").T(quotedSetting, err)
 	}
-	settingId := term.IdSetting(setting)
-	transition, ok := d.Get(settingId)
+	transition, ok := d.Get(setting)
 	if !ok {
-		action := ElicitAction(d, settingId, true)
+		action := ElicitAction(d, setting, true)
 		transition = dynamics.SimpleTransition{action}
-		d.Save(settingId, transition)
+		d.Save(setting, transition)
 	}
 	return core.Answer.T(represent.Transition(transition))
 }
@@ -78,9 +162,8 @@ func reverseHints(l []string) {
 	}
 }
 
-func ElicitAction(d dynamics.Dwimmer, id term.SettingId, hints bool) term.ActionC {
-	setting := id.Setting()
-	settingS := addNames(setting)
+func ElicitAction(d dynamics.Dwimmer, s *term.Setting, hints bool) term.ActionC {
+	settingS := addNames(s)
 	ShowSettingS(d, settingS)
 	hint_strings := []string{}
 	if hints {
@@ -117,7 +200,7 @@ func ElicitAction(d dynamics.Dwimmer, id term.SettingId, hints bool) term.Action
 		if a != nil {
 			for i, n := range a.IntArgs {
 				if n == -1 {
-					a.IntArgs[i] = setting.Size - 1
+					a.IntArgs[i] = s.Size - 1
 				}
 			}
 			return *a
@@ -134,7 +217,7 @@ func questionLike(c term.C) bool {
 	return false
 }
 
-var allNames = "xyzwijklmnstuvabcdefg"
+var allNames = "wxyzXYZWbcdABCDefghstuvijklmn"
 
 func makeNames(n int) []string {
 	result := make([]string, n)

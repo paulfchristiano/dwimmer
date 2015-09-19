@@ -13,6 +13,7 @@ type UIImplementer interface {
 	Debug(string)
 	Readln(string, ...[]string) string
 	GetCh() rune
+	CheckCh() (rune, bool)
 	Clear()
 	InitUI()
 	CloseUI()
@@ -20,6 +21,7 @@ type UIImplementer interface {
 
 type Term struct {
 	initialized bool
+	input       chan termbox.Event
 	x, y        int
 }
 
@@ -44,6 +46,7 @@ func (d *dummy) InitUI()          {}
 func (d *dummy) CloseUI()         {}
 
 func (d *dummy) Readln(s string, hintss ...[]string) string { panic("asekd for input") }
+func (d *dummy) CheckCh() (rune, bool)                      { return 0, false }
 
 func (t *Term) Debug(s string) {
 	t.Println(s)
@@ -128,7 +131,7 @@ func (t *Term) Getln(hints []string) string {
 	hints = append(hints, "")
 	hintIndex := len(hints) - 1
 	for {
-		if ev := termbox.PollEvent(); ev.Type == termbox.EventKey {
+		if ev := <-t.input; ev.Type == termbox.EventKey {
 			var ch rune
 			switch {
 			case ev.Key == termbox.KeyEnter:
@@ -136,6 +139,8 @@ func (t *Term) Getln(hints []string) string {
 				return input
 			case ev.Key == termbox.KeyCtrlC:
 				panic("interrupted")
+			case ev.Key == termbox.KeyCtrlS:
+				panic("meta")
 			case ev.Key == termbox.KeyArrowUp:
 				if hintIndex > 0 {
 					if hintIndex == len(hints)-1 {
@@ -194,16 +199,28 @@ func (t *Term) Getln(hints []string) string {
 func (t *Term) GetCh() rune {
 	Flush()
 	for {
-		if ev := termbox.PollEvent(); ev.Type == termbox.EventKey {
+		if ev := <-t.input; ev.Type == termbox.EventKey {
 			if ev.Key == termbox.KeyCtrlC {
-				panic("interrupted!")
+				panic("interrupted")
 			}
 			return ev.Ch
 		}
 	}
 }
 
+func getInput(ch chan termbox.Event) {
+	for {
+		ev := termbox.PollEvent()
+		if ev.Key == termbox.KeyCtrlD {
+			panic("interrupted with EOF")
+		}
+		ch <- ev
+	}
+}
+
 func (t *Term) InitUI() {
+	t.input = make(chan termbox.Event)
+	go getInput(t.input)
 	err := termbox.Init()
 	if err != nil {
 		panic(err)
@@ -211,6 +228,17 @@ func (t *Term) InitUI() {
 	t.initialized = true
 	t.SetCursor(0, 0)
 	Flush()
+}
+
+func (t *Term) CheckCh() (rune, bool) {
+	select {
+	case ev := <-t.input:
+		if ev.Type == termbox.EventKey && ev.Ch != 0 {
+			return ev.Ch, true
+		}
+	default:
+	}
+	return 0, false
 }
 
 func (t *Term) CloseUI() {

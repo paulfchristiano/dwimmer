@@ -16,6 +16,7 @@ const (
 	Correct
 	Delete
 	Meta
+	Replay
 )
 
 func (a Action) String() string {
@@ -28,6 +29,8 @@ func (a Action) String() string {
 		return "view"
 	case Replace:
 		return "replace"
+	case Replay:
+		return "replay"
 	case Clarify:
 		return "ask@"
 	case Correct:
@@ -180,4 +183,7 @@ func DeleteT(n int) ActionT {
 
 func MetaC() ActionC {
 	return ActionC{Meta, []C{}, []int{}}
+}
+func ReplayC(n int) ActionC {
+	return ActionC{Replay, []C{}, []int{n}}
 }

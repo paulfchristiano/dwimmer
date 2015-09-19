@@ -30,19 +30,19 @@ var (
 
 func init() {
 	s := term.InitS()
-	s.AppendTemplate(Len, "s")
+	s = dynamics.ExpectQuestion(s, Len, "Q", "s")
 	s = dynamics.AddSimple(s, term.ViewS(term.Sr("s")))
 	s.AppendTemplate(term.Str("").Head())
 	dynamics.AddNative(s, dynamics.Args1(length), "s")
 
 	s = term.InitS()
-	s.AppendTemplate(Bracketed, "s")
+	s = dynamics.ExpectQuestion(s, Bracketed, "Q", "s")
 	s = dynamics.AddSimple(s, term.ViewS(term.Sr("s")))
 	s.AppendTemplate(term.Str("").Head())
 	dynamics.AddNative(s, dynamics.Args1(bracketed), "s")
 
 	s = term.InitS()
-	s.AppendTemplate(Concat, "a", "b")
+	s = dynamics.ExpectQuestion(s, Concat, "Q", "a", "b")
 	s = dynamics.AddSimple(s, term.ViewS(term.Sr("a")))
 	s.AppendTemplate(term.Str("").Head())
 	s = dynamics.AddSimple(s, term.ViewS(term.Sr("b")))
