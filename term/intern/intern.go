@@ -1,7 +1,5 @@
 package intern
 
-import "fmt"
-
 type Packer interface {
 	PackString(string) Packed
 	PackInt(int) Packed
@@ -15,6 +13,11 @@ type Packer interface {
 	UnpackPair(Packed) (Packed, Packed)
 	UnpackLast(Packed) Packed
 	UnpackInit(Packed) Packed
+
+	CachePack(int, interface{}, Packed) Packed
+	GetCachedPack(int, interface{}) (Packed, bool)
+	CacheUnpack(int, Packed, interface{})
+	GetCachedUnpack(int, Packed) (interface{}, bool)
 }
 
 type Packed interface {
@@ -32,20 +35,64 @@ type IDer struct {
 	stringIDs map[string]ID
 	pairs     []idPair
 	pairIDs   map[idPair]ID
+
+	packCaches   map[int]map[interface{}]ID
+	unpackCaches map[int]map[ID]interface{}
 }
 
 func NewIDer() *IDer {
 	return &IDer{
-		intIDs:    make(map[int]ID),
-		stringIDs: make(map[string]ID),
-		pairIDs:   make(map[idPair]ID),
+		intIDs:       make(map[int]ID),
+		stringIDs:    make(map[string]ID),
+		pairIDs:      make(map[idPair]ID),
+		packCaches:   make(map[int](map[interface{}]ID)),
+		unpackCaches: make(map[int](map[ID]interface{})),
 	}
 }
 
-var DefaultIDer Packer = NewIDer()
+var _ Packer = (*IDer)(nil)
 
 type idPair struct {
 	a, b ID
+}
+
+func (ider *IDer) packCache(n int) map[interface{}]ID {
+	result, ok := ider.packCaches[n]
+	if !ok {
+		result = make(map[interface{}]ID)
+		ider.packCaches[n] = result
+	}
+	return result
+}
+
+func (ider *IDer) unpackCache(n int) map[ID]interface{} {
+	result, ok := ider.unpackCaches[n]
+	if !ok {
+		result = make(map[ID]interface{})
+		ider.unpackCaches[n] = result
+	}
+	return result
+}
+
+func (ider *IDer) CachePack(n int, key interface{}, value Packed) Packed {
+	ider.packCache(n)[key] = value.(ID)
+	ider.unpackCache(n)[value.(ID)] = key
+	return value
+}
+
+func (ider *IDer) GetCachedPack(n int, key interface{}) (Packed, bool) {
+	result, ok := ider.packCache(n)[key]
+	return result, ok
+}
+
+func (ider *IDer) GetCachedUnpack(n int, key Packed) (interface{}, bool) {
+	result, ok := ider.unpackCache(n)[key.(ID)]
+	return result, ok
+}
+
+func (ider *IDer) CacheUnpack(n int, key Packed, value interface{}) {
+	ider.unpackCache(n)[key.(ID)] = value
+	ider.packCache(n)[value] = key.(ID)
 }
 
 func (ider *IDer) PackString(s string) Packed {
@@ -102,9 +149,7 @@ func (ider *IDer) UnpackList(x Packed) []Packed {
 		next, x = ider.UnpackPair(id)
 		result = append(result, next)
 	}
-	fmt.Println(result)
 	reverse(result)
-	fmt.Println(result)
 	return result
 }
 

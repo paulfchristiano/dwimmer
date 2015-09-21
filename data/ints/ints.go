@@ -27,7 +27,7 @@ func init() {
 	s := term.InitS().AppendTemplate(ExplicitQ, "x")
 	s = dynamics.AddSimple(s, term.ViewS(term.Sr("x")))
 
-	for _, tm := range []term.TemplateId{DoublePlusOne, Double, Negative} {
+	for _, tm := range []term.TemplateID{DoublePlusOne, Double, Negative} {
 		t := s.Copy().AppendTemplate(tm, "y")
 		t = dynamics.AddSimple(t, term.AskS(ExplicitQ.S(term.Sr("y"))))
 		dynamics.AddSimple(t.AppendTemplate(core.Answer, "A"),
@@ -83,7 +83,7 @@ var (
 )
 
 func init() {
-	QNames := []term.TemplateId{Plus, Times, Minus, Equal, Less, More, LessOrEqual, MoreOrEqual}
+	QNames := []term.TemplateID{Plus, Times, Minus, Equal, Less, More, LessOrEqual, MoreOrEqual}
 	QFuncs := [](func(dynamics.Dwimmer, *term.SettingT, ...term.T) term.T){
 		dynamics.Args2(addNative),
 		dynamics.Args2(multiplyNative),

@@ -1,8 +1,9 @@
-package database
+package database_test
 
 import (
 	"testing"
 
+	. "github.com/paulfchristiano/dwimmer/storage/database"
 	"github.com/paulfchristiano/dwimmer/term"
 )
 
@@ -37,6 +38,7 @@ func BenchmarkSearch(b *testing.B) {
 
 func TestEncoding(t *testing.T) {
 	collection := Collection("testing")
+	collection.Empty("testing")
 	template := term.Make("test [] term")
 	c := template.C(term.ReferenceC{0})
 	cc := term.ConstC{template.T(term.Make("stub").T())}
@@ -48,19 +50,26 @@ func TestEncoding(t *testing.T) {
 	found := 0
 	for _, x := range collection.All() {
 		if x["key"] == 1 {
-			newVal := term.LoadSetting(x["value"])
-			newId := newVal.Id
-			oldId := setting.Id
-			if newId != oldId {
+			t.Log(x["value"])
+			newVal, err := term.LoadSetting(x["value"])
+			if err != nil {
+				t.Error(err)
+			}
+			newID := newVal.ID
+			oldID := setting.ID
+			if newID != oldID {
 				t.Errorf("%v != %v", newVal, setting)
 			}
 			found++
 		}
 		if x["key"] == 2 {
-			newVal := term.LoadC(x["value"])
-			newId := term.IdC(newVal)
-			oldId := term.IdC(cc)
-			if newId != oldId {
+			newVal, err := term.LoadC(x["value"])
+			if err != nil {
+				t.Error(err)
+			}
+			newID := term.IDC(newVal)
+			oldID := term.IDC(cc)
+			if newID != oldID {
 				t.Errorf("%v != %v", newVal, cc)
 			}
 			found++
@@ -70,18 +79,24 @@ func TestEncoding(t *testing.T) {
 		t.Errorf("found %d < 2 items", found)
 	}
 	{
-		newSetting := term.LoadSetting(collection.Get(1))
-		newId := newSetting.Id
-		oldId := setting.Id
-		if newId != oldId {
+		newSetting, err := term.LoadSetting(collection.Get(1))
+		if err != nil {
+			t.Error(err)
+		}
+		newID := newSetting.ID
+		oldID := setting.ID
+		if newID != oldID {
 			t.Errorf("%v != %v", newSetting, setting)
 		}
 	}
 	{
-		newC := term.LoadC(collection.Get(2))
-		newId := term.IdC(newC)
-		oldId := term.IdC(cc)
-		if newId != oldId {
+		newC, err := term.LoadC(collection.Get(2))
+		if err != nil {
+			t.Error(err)
+		}
+		newID := term.IDC(newC)
+		oldID := term.IDC(cc)
+		if newID != oldID {
 			t.Errorf("%v != %v", newC, cc)
 		}
 	}

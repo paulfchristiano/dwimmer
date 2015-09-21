@@ -26,7 +26,7 @@ func TestRepresentations(t *testing.T) {
 	if err != nil {
 		t.Errorf("received error %v", err)
 	}
-	if term.IdSetting(setting) != term.IdSetting(setting2) {
+	if term.IDSetting(setting) != term.IDSetting(setting2) {
 		t.Errorf("%v != %v", setting, setting2)
 	}
 	actions := []term.ActionC{term.ReturnC(term.Cr(3)), term.ClarifyC(term.Cr(2), core.OK.C()), term.DeleteC(7)}
@@ -35,7 +35,7 @@ func TestRepresentations(t *testing.T) {
 		if err != nil {
 			t.Errorf("received error %v", err)
 		}
-		if term.IdActionC(action) != term.IdActionC(action2) {
+		if term.IDActionC(action) != term.IDActionC(action2) {
 			t.Errorf("%v != %v", action, action2)
 		}
 	}
@@ -64,7 +64,7 @@ func TestRepresentations(t *testing.T) {
 	if err != nil {
 		t.Errorf("received error %v")
 	}
-	if settingT2.Setting.Id != settingT.Setting.Id {
+	if settingT2.Setting.ID != settingT.Setting.ID {
 		t.Errorf("%v != %v", settingT2, settingT)
 	}
 

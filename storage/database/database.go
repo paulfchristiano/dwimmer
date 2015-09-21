@@ -16,6 +16,13 @@ type C struct {
 	collection *mgo.Collection
 }
 
+func (c C) Empty(s string) {
+	if s != "testing" {
+		panic("not yet ready to empty databases outside of tests...")
+	}
+	c.collection.RemoveAll(nil)
+}
+
 func init() {
 	session, err := mgo.Dial("localhost")
 	if err != nil {
@@ -25,7 +32,15 @@ func init() {
 }
 
 func Collection(name string) C {
-	return C{db.C(name)}
+	c := db.C(name)
+	c.EnsureIndex(mgo.Index{
+		Key:        []string{"key"},
+		Unique:     true,
+		DropDups:   false,
+		Background: true,
+		Sparse:     false,
+	})
+	return C{c}
 }
 
 func (c C) Set(key, value interface{}) {

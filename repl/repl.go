@@ -9,7 +9,6 @@ import (
 	"runtime/pprof"
 
 	"github.com/paulfchristiano/dwimmer"
-	"github.com/paulfchristiano/dwimmer/term"
 )
 
 var (
@@ -40,5 +39,4 @@ func main() {
 		defer f.Close()
 	}
 	fmt.Println(s.Head())
-	fmt.Println(term.CompoundStringifies)
 }

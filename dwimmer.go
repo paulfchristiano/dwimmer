@@ -1,7 +1,6 @@
 package dwimmer
 
 import (
-	"fmt"
 	"log"
 	"math/rand"
 	"os"
@@ -32,44 +31,15 @@ func init() {
 
 type Dwimmer struct {
 	dynamics.Transitions
+	dynamics.Stack
 	ui.UIImplementer
 	storage.StorageImplementer
 }
 
 func (d *Dwimmer) Close() {
 	d.CloseUI()
+	d.ShowStack()
 	d.CloseStorage()
-	RecoverStackError(recover())
-}
-
-func (d *Dwimmer) Readln(s string, hintss ...[]string) string {
-	defer func() {
-		e := recover()
-		if e != nil {
-			switch e {
-			case "interrupted":
-				panic(StackError{[]*term.Template{}, "interrupted during input"})
-			default:
-				panic(e)
-			}
-		}
-	}()
-	return d.UIImplementer.Readln(s, hintss...)
-}
-
-func RecoverStackError(e interface{}) {
-	if e != nil {
-		switch e := e.(type) {
-		case StackError:
-			fmt.Printf("%s, printing top 20 questions in stack...\n", e.message)
-			fmt.Printf("(stack size is %d)\n", len(e.stack))
-			for _, t := range e.Top(20) {
-				fmt.Println(t)
-			}
-		default:
-			panic(e)
-		}
-	}
 }
 
 func NewDwimmer(impls ...ui.UIImplementer) *Dwimmer {
@@ -83,6 +53,7 @@ func NewDwimmer(impls ...ui.UIImplementer) *Dwimmer {
 		Transitions:        dynamics.DefaultTransitions,
 		UIImplementer:      impl,
 		StorageImplementer: storage.NewStorage("state"),
+		Stack:              &dynamics.BasicStack{},
 	}
 	result.InitUI()
 	defer func() {
@@ -111,23 +82,32 @@ func DoC(d dynamics.Dwimmer, a term.ActionC, s *term.SettingT) term.T {
 	return d.Do(a.Instantiate(s.Args), s)
 }
 
+func addToStack(d dynamics.Dwimmer, t term.T) {
+
+}
+
 func subAsk(d dynamics.Dwimmer, Q term.T, parent *term.SettingT) (term.T, *term.SettingT) {
-	defer propagateStackError(Q)
+	d.Push(Q)
 	stackCheck()
 	child := term.InitT()
 	child.AppendTerm(dynamics.ParentChannel.T(term.MakeChannel(parent)))
 	child.AppendTerm(Q)
-	return d.Run(child), child
+	A := d.Run(child)
+	d.Pop()
+	return A, child
 }
 
 func subRun(d dynamics.Dwimmer, Q term.T, parent, child *term.SettingT) term.T {
-	defer propagateStackError(Q)
+	d.Push(Q)
 	stackCheck()
 	child.AppendTerm(dynamics.ParentChannel.T(term.MakeChannel(parent)))
 	child.AppendTerm(Q)
 	A := d.Run(child)
 	parent.AppendTerm(dynamics.OpenChannel.T(term.MakeChannel(child)))
-	parent.AppendTerm(A)
+	if A != nil {
+		parent.AppendTerm(A)
+	}
+	d.Pop()
 	return A
 }
 
@@ -208,9 +188,7 @@ var (
 func (d *Dwimmer) Run(setting *term.SettingT) term.T {
 	for {
 		goMeta := func() {
-			shell := term.InitT()
-			shell.AppendTerm(Interrupted.T(represent.SettingT(setting)))
-			StartShell(d, shell)
+			StartShell(d, Interrupted.T(represent.SettingT(setting)))
 		}
 		char, sent := d.CheckCh()
 		if sent {
@@ -226,16 +204,6 @@ func (d *Dwimmer) Run(setting *term.SettingT) term.T {
 		}
 		transition, ok := d.Get(setting.Setting)
 		if !ok {
-			defer func() {
-				e := recover()
-				if e != nil {
-					if e == "meta" {
-						goMeta()
-					} else {
-						panic(e)
-					}
-				}
-			}()
 			Q := FallThrough.T(represent.SettingT(setting))
 			result, _ := subAsk(d, Q, setting)
 			var err term.T
@@ -271,42 +239,10 @@ func stackSize() uint64 {
 	return mem.StackInuse
 }
 
-type StackError struct {
-	stack   []*term.Template
-	message string
-}
-
-func (e *StackError) Add(t *term.Template) {
-	e.stack = append(e.stack, t)
-}
-
-func (e *StackError) Top(n int) []*term.Template {
-	if n > len(e.stack) {
-		n = len(e.stack)
-	}
-	return e.stack[len(e.stack)-n:]
-}
-
-func (e *StackError) StackSize() int {
-	return len(e.stack)
-}
-
-func propagateStackError(Q term.T) {
-	x := recover()
-	if x != nil {
-		switch y := x.(type) {
-		case StackError:
-			y.Add(Q.Head().Template())
-			panic(y)
-		}
-		panic(x)
-	}
-}
-
 func stackCheck() {
 	if rand.Int()%100 == 0 {
 		if stackSize() > 5e8 {
-			panic(StackError{[]*term.Template{}, "stack is too large!"})
+			panic("stack is too large!")
 		}
 	}
 }

@@ -114,6 +114,6 @@ func init() {
 
 	t = s.Copy().AppendTemplate(lists.Singleton, "y")
 	t = dynamics.AddSimple(t, term.AskS(Apply2.S(term.Sr("f"), term.Sr("x"), term.Sr("y"))))
-	t = dynamics.ExpectAnswer(core.Answer, "A1", "A")
+	t = dynamics.ExpectAnswer(t, core.Answer, "A1", "A")
 	t = dynamics.AddSimple(t, term.ReturnS(term.Sr("A")))
 }

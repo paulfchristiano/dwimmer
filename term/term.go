@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
-
-	"github.com/paulfchristiano/dwimmer/term/intern"
 )
 
 type Template struct {
@@ -26,8 +24,8 @@ func (t *Template) ShowWith(ss ...string) string {
 
 var sep = "[]"
 
-func (t TemplateID) String(ider intern.Packer) string {
-	return ToTemplate(ider, t).String()
+func (t TemplateID) String() string {
+	return t.Template().String()
 }
 
 func (t Template) String() string {
@@ -38,8 +36,8 @@ func (t TemplateID) Head() TemplateID {
 	return t
 }
 
-func (t TemplateID) Parts(ider intern.Packer) []string {
-	return ToTemplate(ider, t).Parts
+func (t TemplateID) Parts() []string {
+	return t.Template().Parts
 }
 
 type CompoundT struct {
@@ -60,18 +58,20 @@ type CompoundS struct {
 type T interface {
 	Head() TemplateID
 	Values() []T
-	String(intern.Packer) string
+	ID() TID
+	String() string
 }
 
 type C interface {
-	String(intern.Packer) string
+	String() string
 	Values() []C
+	ID() CID
 	Instantiate([]T) T
 	Uninstantiate([]string) S
 }
 
 type S interface {
-	String(intern.Packer) string
+	String() string
 	Values() []S
 	Instantiate([]string) C
 }
@@ -87,13 +87,16 @@ func interleave(as, bs []string) string {
 	return buffer.String()
 }
 
-func (t *CompoundT) String(ider intern.Packer) string {
+/*
+func (t *CompoundT) String() string {
+	return t.Swtring()
 	args := make([]string, len(t.args))
 	for i, arg := range t.args {
-		args[i] = fmt.Sprintf("[%s]", arg.String(ider))
+		args[i] = fmt.Sprintf("[%s]", arg.String())
 	}
-	return interleave(ToTemplate(ider, t.Head()).Parts, args)
+	return interleave(t.Parts(), args)
 }
+*/
 
 func (t *CompoundT) Values() []T {
 	return t.args
@@ -123,19 +126,19 @@ func (t *CompoundS) Instantiate(names []string) C {
 	return &CompoundC{t.TemplateID, args}
 }
 
-func (t *CompoundC) String(ider intern.Packer) string {
+func (t *CompoundC) String() string {
 	args := make([]string, len(t.args))
 	for i, arg := range t.args {
-		args[i] = fmt.Sprintf("[%s]", arg.String(ider))
+		args[i] = fmt.Sprintf("[%s]", arg.String())
 	}
-	return interleave(ToTemplate(ider, t.Head()).Parts, args)
+	return interleave(t.Parts(), args)
 }
-func (t *CompoundS) String(ider intern.Packer) string {
+func (t *CompoundS) String() string {
 	args := make([]string, len(t.args))
 	for i, arg := range t.args {
-		args[i] = fmt.Sprintf("[%s]", arg.String(ider))
+		args[i] = fmt.Sprintf("[%s]", arg.String())
 	}
-	return interleave(ToTemplate(ider, t.Head()).Parts, args)
+	return interleave(t.Parts(), args)
 }
 func (t *CompoundC) Values() []C {
 	return t.args
@@ -200,7 +203,7 @@ func (r ReferenceC) Values() []C {
 	return make([]C, 0)
 }
 
-func (r ReferenceC) String(ider intern.Packer) string {
+func (r ReferenceC) String() string {
 	return fmt.Sprintf("#%d", r.Index)
 }
 
@@ -217,7 +220,7 @@ func (r ReferenceS) Instantiate(names []string) C {
 	panic(fmt.Sprintf("tried to instantiate a ReferenceS with name %v in the enviornment %v", r.name, names))
 }
 
-func (r ReferenceS) String(ider intern.Packer) string {
+func (r ReferenceS) String() string {
 	return fmt.Sprintf("#%s", r.name)
 }
 

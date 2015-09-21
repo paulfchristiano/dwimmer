@@ -17,7 +17,7 @@ var (
 		"and list of arguments []")
 	QuotedTemplate = term.Make("the term template that has parts []")
 
-	ActionLookup = map[term.Action]term.TemplateId{
+	ActionLookup = map[term.Action]term.TemplateID{
 		term.Return: term.Make("the parametrized action that returns the instantiation of its first argument"),
 		term.View:   term.Make("the parametrized action that views the instantiation of its first argument"),
 		term.Ask:    term.Make("the parametrized action that asks the instantiation of its first argument"),
@@ -65,9 +65,9 @@ func SettingT(s *term.SettingT) term.T {
 
 func SettingLine(l term.SettingLine) term.T {
 	switch l := l.(type) {
-	case term.TemplateId:
+	case term.TemplateID:
 		return Template(l)
-	case term.ActionCId:
+	case term.ActionCID:
 		return ActionC(l.ActionC())
 	default:
 		panic("quoting unknown type of setting line!")
@@ -83,7 +83,7 @@ func Setting(s *term.Setting) term.T {
 	return QuotedSetting.T(List(quotedLines))
 }
 
-func Template(temp term.TemplateId) term.T {
+func Template(temp term.TemplateID) term.T {
 	t := temp.Template()
 	parts := make([]term.T, len(t.Parts))
 	for i, part := range t.Parts {

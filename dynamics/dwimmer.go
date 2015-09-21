@@ -12,6 +12,7 @@ type Dwimmer interface {
 	Run(*term.SettingT) term.T
 	Do(term.ActionT, *term.SettingT) term.T
 
+	Stack
 	Transitions
 	ui.UIImplementer
 	storage.StorageImplementer

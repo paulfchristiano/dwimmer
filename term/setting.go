@@ -8,7 +8,6 @@ import (
 
 //NOTE Setting is immutable, SettingS and SettingT are mutable
 //this seems good for performance, but may cause bugs...
-//Also, it exploits the fact that a setting can't change after going into a channel :(
 
 type Setting struct {
 	ID       SettingID
@@ -28,16 +27,16 @@ func (s *Setting) Rollback(n int) *Setting {
 	return s.Previous.Rollback(n)
 }
 
-func Init(ider intern.Packer) *Setting {
+func Init() *Setting {
 	return &Setting{
-		ID: SettingID(ider.PackList([]intern.Packed{}).(intern.ID)),
+		ID: SettingID(IDer.PackList([]intern.Packed{}).(intern.ID)),
 	}
 }
 
-func (s *Setting) Append(ider intern.Packer, line SettingLine, slotss ...int) *Setting {
+func (s *Setting) Append(line SettingLine, slotss ...int) *Setting {
 	var slots int
 	if len(slotss) == 0 {
-		slots = line.Slots(ider)
+		slots = line.Slots()
 	} else {
 		slots = slotss[0]
 	}
@@ -46,9 +45,9 @@ func (s *Setting) Append(ider intern.Packer, line SettingLine, slotss ...int) *S
 		Last:     line,
 		Slots:    slots,
 		Size:     s.Size + 1,
-		ID: SettingID(ider.AppendToPacked(
+		ID: SettingID(IDer.AppendToPacked(
 			intern.ID(s.ID),
-			line.LineID(ider),
+			line.LineID(),
 		).(intern.ID)),
 	}
 }
@@ -69,29 +68,29 @@ func (s *Setting) Lines() []SettingLine {
 }
 
 type SettingLine interface {
-	LineID(intern.Packer) intern.ID
-	Slots(intern.Packer) int
+	LineID() intern.ID
+	Slots() int
 }
 
-func (a ActionCID) LineID(ider intern.Packer) intern.ID {
+func (a ActionCID) LineID() intern.ID {
 	return intern.ID(a)
 }
 
-func (a ActionCID) Slots(ider intern.Packer) int {
+func (a ActionCID) Slots() int {
 	return 0
 }
 
-func (t TemplateID) Slots(ider intern.Packer) int {
-	return ToTemplate(ider, t).Slots()
+func (t TemplateID) Slots() int {
+	return t.Template().Slots()
 }
 
-func (t TemplateID) LineID(ider intern.Packer) intern.ID {
+func (t TemplateID) LineID() intern.ID {
 	return intern.ID(t)
 }
 
 type SettingS struct {
-	Setting *Setting
-	Names   []string
+	*Setting
+	Names []string
 }
 
 func (s *SettingS) Copy() *SettingS {
@@ -103,15 +102,15 @@ func (s *SettingS) Copy() *SettingS {
 	return result
 }
 
-func InitS(ider intern.Packer) *SettingS {
+func InitS() *SettingS {
 	return &SettingS{
-		Setting: Init(ider),
+		Setting: Init(),
 		Names:   []string{},
 	}
 }
 
-func (s *SettingS) AppendTemplate(ider intern.Packer, t TemplateID, names ...string) *SettingS {
-	s.Setting = s.Setting.Append(ider, t, len(names))
+func (s *SettingS) AppendTemplate(t TemplateID, names ...string) *SettingS {
+	s.Setting = s.Setting.Append(t, len(names))
 	for i := range names {
 		for j := range s.Names {
 			if names[i] == s.Names[j] {
@@ -123,23 +122,23 @@ func (s *SettingS) AppendTemplate(ider intern.Packer, t TemplateID, names ...str
 	return s
 }
 
-func (s *SettingS) AppendAction(ider intern.Packer, a ActionC) *SettingS {
-	id := IDActionC(ider, a)
-	s.Setting = s.Setting.Append(ider, id, 0)
+func (s *SettingS) AppendAction(a ActionC) *SettingS {
+	id := a.ID()
+	s.Setting = s.Setting.Append(id, 0)
 	return s
 }
 
-func (s *SettingS) Lines(ider intern.Packer) []string {
+func (s *SettingS) Lines() []string {
 	lines := s.Setting.Lines()
 	result := make([]string, 0)
 	index := 0
 	for i, line := range lines {
 		switch line := line.(type) {
 		case ActionCID:
-			a := ToActionC(ider, line)
-			result = append(result, "", fmt.Sprintf("%d< %s", i, a.Uninstantiate(s.Names).String(ider)))
+			a := line.ActionC()
+			result = append(result, "", fmt.Sprintf("%d< %s", i, a.Uninstantiate(s.Names).String()))
 		case TemplateID:
-			t := ToTemplate(ider, line)
+			t := line.Template()
 			newindex := index + t.Slots()
 			if len(s.Names) < newindex {
 				panic(fmt.Sprintf(
@@ -160,13 +159,13 @@ func (s *SettingS) Lines(ider intern.Packer) []string {
 }
 
 type SettingT struct {
-	Setting *Setting
-	Args    []T
+	*Setting
+	Args []T
 }
 
-func InitT(ider intern.Packer) *SettingT {
+func InitT() *SettingT {
 	return &SettingT{
-		Setting: Init(ider),
+		Setting: Init(),
 		Args:    []T{},
 	}
 }
@@ -180,15 +179,15 @@ func (s *SettingT) Copy() *SettingT {
 	return result
 }
 
-func (s *SettingT) AppendTerm(ider intern.Packer, t T) *SettingT {
-	s.Setting = s.Setting.Append(ider, t.Head(), len(t.Values()))
+func (s *SettingT) AppendTerm(t T) *SettingT {
+	s.Setting = s.Setting.Append(t.Head(), len(t.Values()))
 	s.Args = append(s.Args, t.Values()...)
 	return s
 }
 
-func (s *SettingT) AppendAction(ider intern.Packer, a ActionC) *SettingT {
-	id := IDActionC(ider, a)
-	s.Setting = s.Setting.Append(ider, id, 0)
+func (s *SettingT) AppendAction(a ActionC) *SettingT {
+	id := a.ID()
+	s.Setting = s.Setting.Append(id, 0)
 	return s
 }
 

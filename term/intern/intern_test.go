@@ -3,6 +3,8 @@ package intern
 import (
 	"fmt"
 	"testing"
+
+	"github.com/paulfchristiano/dwimmer/storage/database"
 )
 
 func TestIntern(t *testing.T) {
@@ -14,7 +16,8 @@ func TestIntern(t *testing.T) {
 		"asdf",
 		"another test",
 	}
-	packers := []Packer{NewIDer(), Recorder{}}
+	db := database.Collection("testing")
+	packers := []Packer{NewIDer(), NewRecorder(db)}
 	for _, packer := range packers {
 		ids := make([]Packed, 50)
 		for i, s := range strings {
@@ -70,7 +73,8 @@ func TestIntern(t *testing.T) {
 }
 
 func TestLists(t *testing.T) {
-	for _, packer := range []Packer{NewIDer(), Recorder{}} {
+	db := database.Collection("testing")
+	for _, packer := range []Packer{NewIDer(), NewRecorder(db)} {
 		list := []Packed{
 			packer.PackInt(1),
 			packer.PackInt(2),
@@ -93,6 +97,39 @@ func TestLists(t *testing.T) {
 		}
 		if len(il) != len(list) {
 			t.Errorf("%d != %d", len(il), len(list))
+		}
+	}
+}
+
+func TestCache(t *testing.T) {
+	db := database.Collection("testing")
+	for _, packer := range []Packer{NewIDer(), NewRecorder(db)} {
+		empty := []Packed{}
+		result, ok := packer.GetCachedPack(123, 7)
+		if ok {
+			t.Errorf("unexpcted cache hit")
+		}
+		packed := packer.PackList(empty)
+		_, ok = packer.GetCachedUnpack(123, packed)
+		if ok {
+			t.Errorf("unexpcted cache hit")
+		}
+		cachedPack := packer.CachePack(123, 7, packed)
+		result, ok = packer.GetCachedPack(123, 7)
+		if !ok {
+			t.Errorf("unexpected cache miss")
+		}
+		if result != cachedPack {
+			t.Errorf("wrong cache value")
+		}
+		_ = packer.UnpackList(packed)
+		packer.CacheUnpack(123, cachedPack, 7)
+		k, ok := packer.GetCachedUnpack(123, cachedPack)
+		if !ok {
+			t.Errorf("unexpected cache miss")
+		}
+		if k.(int) != 7 {
+			t.Errorf("packing and unpacking led to an error")
 		}
 	}
 }

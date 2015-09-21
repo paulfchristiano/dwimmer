@@ -271,7 +271,7 @@ func ToRune(d dynamics.Dwimmer, t term.T) (rune, term.T) {
 	return ToRune(d, reduced)
 }
 
-func ToTemplate(d dynamics.Dwimmer, t term.T) (term.TemplateId, term.T) {
+func ToTemplate(d dynamics.Dwimmer, t term.T) (term.TemplateID, term.T) {
 	switch t.Head() {
 	case QuotedTemplate.Head():
 		quotedParts, err := ToList(d, t.Values()[0])
@@ -287,7 +287,7 @@ func ToTemplate(d dynamics.Dwimmer, t term.T) (term.TemplateId, term.T) {
 					"but received [] while converting one of its parts []").T(err, part)
 			}
 		}
-		return term.IdTemplate(&term.Template{Parts: parts}), nil
+		return term.IDTemplate(&term.Template{Parts: parts}), nil
 	}
 	reduced, err := d.Answer(UnquoteTemplate.T(t))
 	if err != nil {
@@ -379,7 +379,7 @@ func ToSettingLine(d dynamics.Dwimmer, t term.T) (term.SettingLine, term.T) {
 			return nil, term.Make("asked to convert a line of a setting, "+
 				"but received [] while converting action []").T(err, t)
 		}
-		return action.Id(), nil
+		return action.ID(), nil
 	case QuotedTemplate.Head():
 		return ToTemplate(d, t)
 	}

@@ -24,7 +24,7 @@ buildingResult:
 		if isSimple {
 			action := simple.Action
 			for _, otherAction := range result {
-				if action.Id() == otherAction.Id() {
+				if action.ID() == otherAction.ID() {
 					continue buildingResult
 				}
 			}
@@ -40,16 +40,16 @@ func match(a, b term.SettingLine) (float32, bool) {
 		return 0.0, false
 	}
 	switch a := a.(type) {
-	case term.ActionCId:
+	case term.ActionCID:
 		switch b := b.(type) {
-		case term.ActionCId:
+		case term.ActionCID:
 			return 1 - distance(a.String(), b.String()), true
 		default:
 			return 0.0, false
 		}
-	case term.TemplateId:
+	case term.TemplateID:
 		switch b := b.(type) {
-		case term.TemplateId:
+		case term.TemplateID:
 			return 1 - distance(a.String(), b.String()), true
 		default:
 			return 0.0, false

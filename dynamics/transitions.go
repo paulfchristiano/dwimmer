@@ -29,8 +29,8 @@ func (t SimpleTransition) Step(d Dwimmer, s *term.SettingT) term.T {
 
 type TransitionTable struct {
 	collection    database.C
-	table         map[term.SettingId]Transition
-	continuations map[term.SettingId]([]*term.Setting)
+	table         map[term.SettingID]Transition
+	continuations map[term.SettingID]([]*term.Setting)
 }
 
 type Transitions interface {
@@ -45,8 +45,8 @@ var DefaultTransitions = NewTransitionTable(database.Collection("newtransitions"
 func NewTransitionTable(C database.C) *TransitionTable {
 	result := &TransitionTable{
 		collection:    C,
-		table:         make(map[term.SettingId]Transition),
-		continuations: make(map[term.SettingId]([]*term.Setting)),
+		table:         make(map[term.SettingID]Transition),
+		continuations: make(map[term.SettingID]([]*term.Setting)),
 	}
 	for _, transition := range C.All() {
 		settingRecord, ok := transition["key"]
@@ -63,8 +63,14 @@ func NewTransitionTable(C database.C) *TransitionTable {
 		if !ok {
 			continue
 		}
-		setting := term.LoadSetting(settingRecord)
-		action := term.LoadActionC(actionRecord)
+		setting, err := term.LoadSetting(settingRecord)
+		if err != nil {
+			continue
+		}
+		action, err := term.LoadActionC(actionRecord)
+		if err != nil {
+			continue
+		}
 		result.SetSimpleC(setting, action)
 	}
 	return result
@@ -74,13 +80,13 @@ func (table *TransitionTable) AddContinuation(s *term.Setting) {
 	if s.Size == 0 {
 		return
 	}
-	continuations := table.continuations[s.Previous.Id]
+	continuations := table.continuations[s.Previous.ID]
 	for _, c := range continuations {
-		if c.Last.LineId() == s.Last.LineId() {
+		if c.Last.LineID() == s.Last.LineID() {
 			return
 		}
 	}
-	table.continuations[s.Previous.Id] = append(continuations, s)
+	table.continuations[s.Previous.ID] = append(continuations, s)
 	if s.Size > 0 {
 		table.AddContinuation(s.Previous)
 	}
@@ -88,7 +94,7 @@ func (table *TransitionTable) AddContinuation(s *term.Setting) {
 
 func (table *TransitionTable) Set(s *term.Setting, t Transition) {
 	table.AddContinuation(s)
-	table.table[s.Id] = t
+	table.table[s.ID] = t
 }
 
 func (table *TransitionTable) Save(s *term.Setting, t Transition) {
@@ -114,7 +120,7 @@ func (t *TransitionTable) SaveSimpleS(s *term.SettingS, a term.ActionS) *term.Se
 }
 
 func (t *TransitionTable) Get(s *term.Setting) (Transition, bool) {
-	result, ok := t.table[s.Id]
+	result, ok := t.table[s.ID]
 	return result, ok
 }
 
@@ -127,7 +133,7 @@ func AddSimple(s *term.SettingS, a term.ActionS) *term.SettingS {
 	return DefaultTransitions.SaveSimpleS(s, a)
 }
 
-func AddNativeResponse(t term.TemplateId, n int, f func(Dwimmer, *term.SettingT, ...term.T) term.T) {
+func AddNativeResponse(t term.TemplateID, n int, f func(Dwimmer, *term.SettingT, ...term.T) term.T) {
 	names := append([]string{"_Q"}, allNames[:n]...)
 	s := ExpectQuestion(term.InitS(), t, names...)
 	AddNative(s, f, allNames[:n]...)
@@ -169,5 +175,5 @@ func AddNativeTo(table *TransitionTable, s *term.SettingS,
 }
 
 func (table *TransitionTable) Continuations(s *term.Setting) []*term.Setting {
-	return table.continuations[s.Id]
+	return table.continuations[s.ID]
 }

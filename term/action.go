@@ -3,8 +3,6 @@ package term
 import (
 	"bytes"
 	"fmt"
-
-	"github.com/paulfchristiano/dwimmer/term/intern"
 )
 
 type Action int
@@ -87,26 +85,30 @@ func (a ActionS) Instantiate(names []string) ActionC {
 	return ActionC{a.Act, args, a.IntArgs}
 }
 
-func (a ActionC) String(ider intern.Packer) string {
+func (a ActionCID) String() string {
+	return a.ActionC().String()
+}
+
+func (a ActionC) String() string {
 	b := new(bytes.Buffer)
 	b.WriteString(a.Act.String())
 	for _, arg := range a.IntArgs {
 		b.WriteString(fmt.Sprintf(" %d", arg))
 	}
 	for _, arg := range a.Args {
-		b.WriteString(fmt.Sprintf(" %s", arg.String(ider)))
+		b.WriteString(fmt.Sprintf(" %v", arg))
 	}
 	return b.String()
 }
 
-func (a ActionS) String(ider intern.Packer) string {
+func (a ActionS) String() string {
 	b := new(bytes.Buffer)
 	b.WriteString(a.Act.String())
 	for _, arg := range a.IntArgs {
 		b.WriteString(fmt.Sprintf(" %d", arg))
 	}
 	for _, arg := range a.Args {
-		b.WriteString(fmt.Sprintf(" %s", arg.String(ider)))
+		b.WriteString(fmt.Sprintf(" %v", arg))
 	}
 	return b.String()
 }

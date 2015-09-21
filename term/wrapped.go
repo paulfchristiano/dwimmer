@@ -3,8 +3,6 @@ package term
 import (
 	"fmt"
 	"reflect"
-
-	"github.com/paulfchristiano/dwimmer/term/intern"
 )
 
 type Str string
@@ -37,7 +35,7 @@ func (c Channel) Head() TemplateID {
 	return channelHead
 }
 
-func (c Channel) String(ider intern.Packer) string {
+func (c Channel) String() string {
 	return fmt.Sprintf("->")
 }
 
@@ -55,7 +53,7 @@ func (s Str) Head() TemplateID {
 	return strHead
 }
 
-func (s Str) String(ider intern.Packer) string {
+func (s Str) String() string {
 	return fmt.Sprintf("\"%s\"", string(s))
 }
 
@@ -69,7 +67,7 @@ func (n Int) Head() TemplateID {
 	return intHead
 }
 
-func (n Int) String(ider intern.Packer) string {
+func (n Int) String() string {
 	return fmt.Sprintf("%d", int(n))
 }
 
@@ -87,8 +85,8 @@ func (q Quoted) Head() TemplateID {
 	return quotedHead
 }
 
-func (q Quoted) String(ider intern.Packer) string {
-	return fmt.Sprintf("T(%s)", q.Value.String(ider))
+func (q Quoted) String() string {
+	return fmt.Sprintf("T(%s)", q.Value.String())
 }
 
 func (q Quoted) Values() []T {
@@ -105,7 +103,7 @@ func (w Wrapper) Head() TemplateID {
 	return wrapperHead
 }
 
-func (w Wrapper) String(ider intern.Packer) string {
+func (w Wrapper) String() string {
 	return fmt.Sprintf("GoObject(%v)", w.Value)
 }
 
@@ -126,8 +124,8 @@ func (c ConstS) Instantiate(names []string) C {
 	return ConstC{c.Val}
 }
 
-func (c ConstS) String(ider intern.Packer) string {
-	return c.Val.String(ider)
+func (c ConstS) String() string {
+	return c.Val.String()
 }
 
 func (s ConstS) Values() []S {
@@ -150,8 +148,8 @@ func (c ConstC) Uninstantiate(names []string) S {
 	return ConstS{c.Val}
 }
 
-func (c ConstC) String(ider intern.Packer) string {
-	return c.Val.String(ider)
+func (c ConstC) String() string {
+	return c.Val.String()
 }
 
 func (c ConstC) Values() []C {

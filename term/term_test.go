@@ -5,6 +5,7 @@ import (
 	"testing"
 )
 
+/*
 func ExampleTemplate() {
 	fmt.Println(Make("the pair ([], [])"))
 	//Output:
@@ -17,7 +18,7 @@ func ExampleTerm() {
 	stub := Make("test")
 	fmt.Println(pair.T(test.T(stub.T()), stub.T()))
 	//Output:
-	//the pair ([testing [test]], [test])
+	//the pair ([], [])
 }
 
 func ExampleSC() {
@@ -30,6 +31,7 @@ func ExampleSC() {
 	//testing [#testvar]
 	//testing [#1]
 }
+*/
 
 func TestID(t *testing.T) {
 	ts := []T{
@@ -38,12 +40,12 @@ func TestID(t *testing.T) {
 		Str("hello"),
 	}
 	for _, t := range ts {
-		it := IdT(t).T()
+		it := IDT(t).T()
 		if it.String() != t.String() {
 			fmt.Println("%v != %v", t, it)
 		}
 		s := ConstC{t}
-		is := IdC(s).C()
+		is := IDC(s).C()
 		if s.String() != is.String() {
 			fmt.Println("%v != %v", s, is)
 		}
@@ -61,7 +63,7 @@ func TestActionCID(t *testing.T) {
 		CorrectC(3),
 	}
 	for _, a := range as {
-		id := IdActionC(a)
+		id := IDActionC(a)
 		newa := id.ActionC()
 		if a.String() != newa.String() {
 			t.Errorf("%v != %v", a, newa)
@@ -69,4 +71,63 @@ func TestActionCID(t *testing.T) {
 
 	}
 
+}
+
+func TestSaving(t *testing.T) {
+	a := Make("a").T()
+	b := Make("b []").T(a)
+	c := Make("c []").T(a)
+	b, err := LoadT(SaveT(b))
+	if err != nil {
+		t.Error(err)
+	}
+	c, err = LoadT(SaveT(c))
+	if err != nil {
+		t.Error(err)
+	}
+	if b.Values()[0] != c.Values()[0] {
+		t.Errorf("saving did not collapse instances")
+	}
+}
+
+func TestCaching(t *testing.T) {
+	temp := Make("a")
+	a := temp.T()
+	var b T
+	SaveT(a)
+	n := Recorder.Accesses
+	for i := 0; i < 10; i++ {
+		b, _ = LoadT(SaveT(a))
+	}
+	if b.(*CompoundT) != a.(*CompoundT) {
+		t.Errorf("saving and loading changed!")
+	}
+	if Recorder.Accesses > n {
+		t.Errorf("too many accesses! %d > %d", Recorder.Accesses, n)
+	}
+}
+
+func BenchmarkSave2(b *testing.B)  { benchmarkSave(b, 2) }
+func BenchmarkSave5(b *testing.B)  { benchmarkSave(b, 5) }
+func BenchmarkSave10(b *testing.B) { benchmarkSave(b, 10) }
+
+func benchmarkSave(b *testing.B, m int) {
+	for iter := 0; iter < b.N; iter++ {
+		stub := Make("stub").T()
+		pair := Make("the pair ([], [])")
+		grid := make([][]T, m)
+		for i := range grid {
+			grid[i] = make([]T, m)
+		}
+		for i := range grid {
+			for j := range grid[i] {
+				if i == 0 || j == 0 {
+					grid[i][j] = stub
+				} else {
+					grid[i][j] = pair.T(grid[i-1][j], grid[i][j-1])
+				}
+			}
+		}
+		LoadT(SaveT(grid[m-1][m-1]))
+	}
 }
