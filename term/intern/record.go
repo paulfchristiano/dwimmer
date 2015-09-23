@@ -11,18 +11,16 @@ import (
 var WrongType = errors.New("wrong type of record provided")
 
 type Recorder struct {
-	packCaches   map[int](map[interface{}]int64)
-	unpackCaches map[int](map[int64]interface{})
+	packCache   map[interface{}]int64
+	unpackCache map[int64]Pickler
 	database.C
-	Accesses int
 }
 
 func NewRecorder(c database.C) *Recorder {
 	return &Recorder{
-		packCaches:   make(map[int]map[interface{}]int64),
-		unpackCaches: make(map[int]map[int64]interface{}),
-		C:            c,
-		Accesses:     0,
+		packCache:   make(map[interface{}]int64),
+		unpackCache: make(map[int64]Pickler),
+		C:           c,
 	}
 }
 
@@ -34,73 +32,52 @@ type Record struct {
 
 func (r Record) packable() {}
 
-func (rec *Recorder) packCache(n int) map[interface{}]int64 {
-	result, ok := rec.packCaches[n]
-	if !ok {
-		result = make(map[interface{}]int64)
-		rec.packCaches[n] = result
-	}
-	return result
-}
-
-func (rec *Recorder) unpackCache(n int) map[int64]interface{} {
-	result, ok := rec.unpackCaches[n]
-	if !ok {
-		result = make(map[int64]interface{})
-		rec.unpackCaches[n] = result
-	}
-	return result
-}
-
 var source = rand.NewSource(time.Now().UnixNano())
 
-func (rec *Recorder) CachePack(n int, key interface{}, value Packed) Packed {
-	var taken interface{}
-	var cacheKey int64
-	for taken = true; taken != nil; taken = rec.Get(cacheKey) {
-		if taken == key {
-			return Record{cacheKey}
+func (rec *Recorder) UnpackPickler(record Packed, pickler Pickler) (Pickler, bool) {
+	if k, isIndirect := indirect(record.(Record)); isIndirect {
+		result, ok := rec.unpackCache[k]
+		if ok {
+			return result, true
 		}
-		cacheKey = source.Int63()
-		rec.Accesses++
+		pickled, found := rec.Get(k)
+		if !found {
+			return nil, false
+		}
+		result, ok = pickler.Unpickle(rec, pickled)
+		if !ok {
+			return nil, false
+		}
+		rec.unpackCache[k] = result
+		rec.packCache[result.Key()] = k
+		return result, true
 	}
-	rec.Set(cacheKey, value.(Record).Value)
-	rec.Accesses++
-	rec.packCache(n)[key] = cacheKey
-	rec.unpackCache(n)[cacheKey] = key
+	pickled, ok := UnpackPickled(rec, record)
+	if !ok {
+		return nil, false
+	}
+	return pickler.Unpickle(rec, pickled)
+}
+
+func (rec *Recorder) PackPickler(pickler Pickler) Packed {
+	key := pickler.Key()
+	if result, ok := rec.packCache[key]; ok && key != nil {
+		return Record{result}
+	}
+	result := pickler.Pickle(rec)
+	var cacheKey int64
+	for taken := true; taken; _, taken = rec.Get(cacheKey) {
+		cacheKey = source.Int63()
+	}
+	rec.Set(cacheKey, result)
+	rec.packCache[key] = cacheKey
+	rec.unpackCache[cacheKey] = pickler
 	return Record{cacheKey}
 }
 
 func indirect(r Record) (int64, bool) {
 	val, ok := r.Value.(int64)
 	return val, ok
-}
-
-func (rec *Recorder) GetCachedPack(n int, key interface{}) (Packed, bool) {
-	result, ok := rec.packCache(n)[key]
-	return Record{result}, ok
-}
-
-func (rec *Recorder) CacheUnpack(n int, key Packed, value interface{}) {
-	if k, isIndirect := indirect(key.(Record)); isIndirect {
-		rec.unpackCache(n)[k] = value
-		rec.packCache(n)[value] = k
-	}
-}
-
-func (rec *Recorder) GetCachedUnpack(n int, key Packed) (interface{}, bool) {
-	r := key.(Record)
-	if k, isIndirect := indirect(r); isIndirect {
-		result, ok := rec.unpackCache(n)[k]
-		if ok {
-			return result, true
-		}
-		result = rec.Get(k)
-		rec.Accesses++
-		rec.unpackCache(n)[k] = result
-		return result, true
-	}
-	return nil, false
 }
 
 func (_ *Recorder) PackString(s string) Packed {
@@ -132,84 +109,48 @@ func (_ *Recorder) AppendToPacked(init, last Packed) Packed {
 	return Record{result}
 }
 
-func (_ *Recorder) UnpackString(record Packed) string {
+func (_ *Recorder) UnpackString(record Packed) (string, bool) {
 	result, ok := record.(Record).Value.(string)
-	if !ok {
-		panic(WrongType)
-	}
-	return result
+	return result, ok
 }
 
-func (_ *Recorder) UnpackInt(record Packed) int {
+func (_ *Recorder) UnpackInt(record Packed) (int, bool) {
 	result, ok := record.(Record).Value.(int)
-	if !ok {
-		panic(WrongType)
-	}
-	return result
+	return result, ok
 }
 
-func (_ *Recorder) UnpackPair(record Packed) (Packed, Packed) {
+func (_ *Recorder) UnpackPair(record Packed) (Packed, Packed, bool) {
 	elems, ok := record.(Record).Value.([]interface{})
-	if !ok {
-		panic(WrongType)
+	if !ok || len(elems) != 2 {
+		return nil, nil, false
 	}
-	return Record{elems[0]}, Record{elems[1]}
+	return Record{elems[0]}, Record{elems[1]}, true
 }
 
-func (_ *Recorder) UnpackList(record Packed) []Packed {
+func (_ *Recorder) UnpackList(record Packed) ([]Packed, bool) {
 	elems, ok := record.(Record).Value.([]interface{})
 	if !ok {
-		panic(WrongType)
+		return nil, false
 	}
 	result := make([]Packed, len(elems))
 	for i, elem := range elems {
 		result[i] = Record{elem}
 	}
-	return result
+	return result, true
 }
 
-func (_ *Recorder) UnpackLast(record Packed) Packed {
+func (_ *Recorder) UnpackLast(record Packed) (Packed, bool) {
 	result, ok := record.(Record).Value.([]interface{})
-	if !ok {
-		panic(WrongType)
+	if !ok || len(result) == 0 {
+		return nil, false
 	}
-	return Record{result[len(result)-1]}
+	return Record{result[len(result)-1]}, true
 }
 
-func (_ *Recorder) UnpackInit(record Packed) Packed {
+func (_ *Recorder) UnpackInit(record Packed) (Packed, bool) {
 	result, ok := record.(Record).Value.([]interface{})
-	if !ok {
-		panic(WrongType)
+	if !ok || len(result) == 0 {
+		return nil, false
 	}
-	return Record{result[:len(result)-1]}
-}
-
-func MakeRecord(b interface{}) Record {
-	return Record{b}
-	/*
-		switch b := b.(type) {
-		case []interface{}:
-			result := make([]Packed, len(b))
-			for i, x := range b {
-				result[i] = MakeRecord(x)
-			}
-			return Record{result}
-		}
-		return Record{b}
-	*/
-}
-
-func FromRecord(r Record) interface{} {
-	return r.Value
-	/*
-		switch v := r.Value.(type) {
-		case []Packed:
-			result := make([]interface{}, len(v))
-			for i, x := range v {
-				result[i] = FromRecord(x.(Record))
-			}
-			return result
-		}
-		return r.Value
-	*/
+	return Record{result[:len(result)-1]}, true
 }

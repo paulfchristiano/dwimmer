@@ -22,7 +22,10 @@ func TestIntern(t *testing.T) {
 		ids := make([]Packed, 50)
 		for i, s := range strings {
 			ids[i] = packer.PackString(s)
-			is := packer.UnpackString(ids[i])
+			is, ok := packer.UnpackString(ids[i])
+			if !ok {
+				t.Error(ids[i])
+			}
 			if s != is {
 				t.Errorf("%v != %v", s, is)
 			}
@@ -44,7 +47,10 @@ func TestIntern(t *testing.T) {
 		}
 		for i, n := range ints {
 			ids[i] = packer.PackInt(n)
-			in := packer.UnpackInt(ids[i])
+			in, ok := packer.UnpackInt(ids[i])
+			if !ok {
+				t.Error(ids[i])
+			}
 			if n != in {
 				t.Errorf("%v != %v", n, in)
 			}
@@ -59,9 +65,18 @@ func TestIntern(t *testing.T) {
 		for i, s := range strings {
 			n := ints[i]
 			ids[i] = packer.PackPair(packer.PackInt(n), packer.PackString(s))
-			ind, isd := packer.UnpackPair(ids[i])
-			in := packer.UnpackInt(ind)
-			is := packer.UnpackString(isd)
+			ind, isd, ok := packer.UnpackPair(ids[i])
+			if !ok {
+				t.Error(ids[i])
+			}
+			in, ok := packer.UnpackInt(ind)
+			if !ok {
+				t.Error(ind)
+			}
+			is, ok := packer.UnpackString(isd)
+			if !ok {
+				t.Error(isd)
+			}
 			if n != in {
 				t.Errorf("%v != %v", n, in)
 			}
@@ -88,48 +103,26 @@ func TestLists(t *testing.T) {
 		list = append(list, packer.PackInt(4))
 		lid = packer.AppendToPacked(lid, packer.PackInt(4))
 
-		il := packer.UnpackList(lid)
+		il, ok := packer.UnpackList(lid)
+		if !ok {
+			t.Error(lid)
+		}
 		fmt.Println(packer.UnpackPair(lid))
 		for i, x := range list {
-			if packer.UnpackInt(il[i]) != packer.UnpackInt(x) {
-				t.Errorf("%v != %v at %d for %T", packer.UnpackInt(il[i]), packer.UnpackInt(x), i, packer)
+			a, ok := packer.UnpackInt(il[i])
+			if !ok {
+				t.Error(il[i])
+			}
+			b, ok := packer.UnpackInt(x)
+			if !ok {
+				t.Error(x)
+			}
+			if a != b {
+				t.Errorf("%v != %v at %d for %T", a, b, i, packer)
 			}
 		}
 		if len(il) != len(list) {
 			t.Errorf("%d != %d", len(il), len(list))
-		}
-	}
-}
-
-func TestCache(t *testing.T) {
-	db := database.Collection("testing")
-	for _, packer := range []Packer{NewIDer(), NewRecorder(db)} {
-		empty := []Packed{}
-		result, ok := packer.GetCachedPack(123, 7)
-		if ok {
-			t.Errorf("unexpcted cache hit")
-		}
-		packed := packer.PackList(empty)
-		_, ok = packer.GetCachedUnpack(123, packed)
-		if ok {
-			t.Errorf("unexpcted cache hit")
-		}
-		cachedPack := packer.CachePack(123, 7, packed)
-		result, ok = packer.GetCachedPack(123, 7)
-		if !ok {
-			t.Errorf("unexpected cache miss")
-		}
-		if result != cachedPack {
-			t.Errorf("wrong cache value")
-		}
-		_ = packer.UnpackList(packed)
-		packer.CacheUnpack(123, cachedPack, 7)
-		k, ok := packer.GetCachedUnpack(123, cachedPack)
-		if !ok {
-			t.Errorf("unexpected cache miss")
-		}
-		if k.(int) != 7 {
-			t.Errorf("packing and unpacking led to an error")
 		}
 	}
 }

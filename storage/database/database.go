@@ -47,10 +47,11 @@ func (c C) Set(key, value interface{}) {
 	c.collection.Upsert(bson.M{"key": key}, bson.M{"$set": bson.M{"value": value}})
 }
 
-func (c C) Get(key interface{}) interface{} {
+func (c C) Get(key interface{}) (interface{}, bool) {
 	var holder bson.M
 	c.collection.Find(bson.M{"key": key}).One(&holder)
-	return holder["value"]
+	result, ok := holder["value"]
+	return result, ok
 }
 
 func (c C) All() []bson.M {

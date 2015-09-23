@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+
+	"github.com/paulfchristiano/dwimmer/term/intern"
 )
 
 type Template struct {
@@ -59,21 +61,30 @@ type T interface {
 	Head() TemplateID
 	Values() []T
 	ID() TID
+
 	String() string
+	Pickle(intern.Packer) interface{}
+	Unpickle(intern.Packer, interface{}) (intern.Pickler, bool)
+	Key() interface{}
 }
 
 type C interface {
-	String() string
 	Values() []C
 	ID() CID
 	Instantiate([]T) T
 	Uninstantiate([]string) S
+
+	String() string
+	Pickle(intern.Packer) interface{}
+	Unpickle(intern.Packer, interface{}) (intern.Pickler, bool)
+	Key() interface{}
 }
 
 type S interface {
-	String() string
 	Values() []S
 	Instantiate([]string) C
+
+	String() string
 }
 
 func interleave(as, bs []string) string {

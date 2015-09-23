@@ -63,12 +63,12 @@ func NewTransitionTable(C database.C) *TransitionTable {
 		if !ok {
 			continue
 		}
-		setting, err := term.LoadSetting(settingRecord)
-		if err != nil {
+		setting, ok := term.LoadSetting(settingRecord)
+		if !ok {
 			continue
 		}
-		action, err := term.LoadActionC(actionRecord)
-		if err != nil {
+		action, ok := term.LoadActionC(actionRecord)
+		if !ok {
 			continue
 		}
 		result.SetSimpleC(setting, action)

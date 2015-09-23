@@ -70,14 +70,47 @@ func (s *Setting) Lines() []SettingLine {
 type SettingLine interface {
 	LineID() intern.ID
 	Slots() int
+
+	Key() interface{}
+	Pickle(intern.Packer) interface{}
+	Unpickle(intern.Packer, interface{}) (intern.Pickler, bool)
 }
 
 func (a ActionCID) LineID() intern.ID {
 	return intern.ID(a)
 }
 
+func (a ActionCID) Key() interface{} { return a.Key() }
+
+func (a ActionCID) Pickle(packer intern.Packer) interface{} {
+	return a.ActionC().Pickle(packer)
+}
+
+func (a ActionCID) Unpickle(packer intern.Packer, pickled interface{}) (intern.Pickler, bool) {
+	fmt.Println("unpacking action from", pickled)
+	result, ok := a.ActionC().Unpickle(packer, pickled)
+	if !ok {
+		return nil, false
+	}
+	return result.(ActionC).ID(), true
+}
+
 func (a ActionCID) Slots() int {
 	return 0
+}
+
+func (t TemplateID) Key() interface{} { return t }
+
+func (t TemplateID) Pickle(packer intern.Packer) interface{} {
+	return t.Template().Pickle(packer)
+}
+
+func (t TemplateID) Unpickle(packer intern.Packer, pickled interface{}) (intern.Pickler, bool) {
+	result, ok := t.Template().Unpickle(packer, pickled)
+	if !ok {
+		return nil, false
+	}
+	return result.(*Template).ID(), true
 }
 
 func (t TemplateID) Slots() int {

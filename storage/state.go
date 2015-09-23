@@ -40,13 +40,12 @@ func (s *DBStorage) CloseStorage() {
 
 func NewStorage(name string) *DBStorage {
 	collection := database.Collection("newterms")
-	stateRecord := collection.Get(name)
+	stateRecord, ok := collection.Get(name)
 	var state term.T
-	var err error
-	if stateRecord != nil {
-		state, err = term.LoadT(stateRecord)
-		if err != nil {
-			fmt.Printf("failed to load state: got [%v] while loading %v\n", err, stateRecord)
+	if ok {
+		state, ok = term.LoadT(stateRecord)
+		if !ok {
+			fmt.Printf("failed to load state %v\n", stateRecord)
 		}
 	}
 	if state == nil {

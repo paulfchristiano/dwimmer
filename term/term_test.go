@@ -77,13 +77,13 @@ func TestSaving(t *testing.T) {
 	a := Make("a").T()
 	b := Make("b []").T(a)
 	c := Make("c []").T(a)
-	b, err := LoadT(SaveT(b))
-	if err != nil {
-		t.Error(err)
+	b, ok := LoadT(SaveT(b))
+	if !ok {
+		t.Error("failed to load")
 	}
-	c, err = LoadT(SaveT(c))
-	if err != nil {
-		t.Error(err)
+	c, ok = LoadT(SaveT(c))
+	if !ok {
+		t.Error("failed to load")
 	}
 	if b.Values()[0] != c.Values()[0] {
 		t.Errorf("saving did not collapse instances")
@@ -95,15 +95,11 @@ func TestCaching(t *testing.T) {
 	a := temp.T()
 	var b T
 	SaveT(a)
-	n := Recorder.Accesses
 	for i := 0; i < 10; i++ {
 		b, _ = LoadT(SaveT(a))
 	}
 	if b.(*CompoundT) != a.(*CompoundT) {
 		t.Errorf("saving and loading changed!")
-	}
-	if Recorder.Accesses > n {
-		t.Errorf("too many accesses! %d > %d", Recorder.Accesses, n)
 	}
 }
 
