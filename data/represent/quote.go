@@ -5,6 +5,7 @@ import (
 
 	"github.com/paulfchristiano/dwimmer/data/core"
 	"github.com/paulfchristiano/dwimmer/data/lists"
+	"github.com/paulfchristiano/dwimmer/data/strings"
 	"github.com/paulfchristiano/dwimmer/dynamics"
 	"github.com/paulfchristiano/dwimmer/term"
 )
@@ -189,8 +190,8 @@ func init() {
 	dynamics.AddNative(s, dynamics.Args1(makeExplicit), "t")
 }
 
-func Ch(c rune) term.T {
-	return term.Make(fmt.Sprintf("the character '%c'", c)).T()
+func Rune(c rune) term.T {
+	return strings.Rune.T(Int(int(c)))
 }
 
 func Str(s string) term.T {

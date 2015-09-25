@@ -74,6 +74,7 @@ type C interface {
 	ID() CID
 	Instantiate([]T) T
 	Uninstantiate([]string) S
+	AllTemplates() []*Template
 
 	String() string
 	Pickle(intern.Packer) intern.Packed
@@ -129,6 +130,30 @@ func (t *CompoundC) Uninstantiate(names []string) S {
 		args[i] = arg.Uninstantiate(names)
 	}
 	return t.S(args...)
+}
+
+func (t *CompoundC) AllTemplates() (result []*Template) {
+	result = append(result, t.Template())
+	for _, arg := range t.args {
+		result = append(result, arg.AllTemplates()...)
+	}
+	return result
+}
+
+func (t ReferenceC) AllTemplates() []*Template {
+	return []*Template{}
+}
+
+func (t ConstC) AllTemplates() []*Template {
+	return AllTemplates(t.Val)
+}
+
+func AllTemplates(t T) (result []*Template) {
+	result = append(result, t.Head().Template())
+	for _, arg := range t.Values() {
+		result = append(result, AllTemplates(arg)...)
+	}
+	return result
 }
 
 func (t *CompoundS) Instantiate(names []string) C {

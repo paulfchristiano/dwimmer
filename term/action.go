@@ -102,6 +102,13 @@ func (a ActionC) Uninstantiate(names []string) ActionS {
 	return ActionS{a.Act, args, a.IntArgs}
 }
 
+func (a ActionC) AllTemplates() (result []*Template) {
+	for _, c := range a.Args {
+		result = append(result, c.AllTemplates()...)
+	}
+	return
+}
+
 func (a ActionS) Instantiate(names []string) ActionC {
 	args := make([]C, len(a.Args))
 	for i, arg := range a.Args {

@@ -1,9 +1,6 @@
 package dwimmer
 
 import (
-	"math/rand"
-	"runtime"
-
 	"github.com/paulfchristiano/dwimmer/data/core"
 	_ "github.com/paulfchristiano/dwimmer/data/ints"
 	"github.com/paulfchristiano/dwimmer/data/represent"
@@ -61,7 +58,7 @@ func RunInitializers(d dynamics.Dwimmer) {
 	s.AppendTerm(Initialization.T())
 	for _, t := range dynamics.DefaultInitializers {
 		c := term.InitT()
-		subRun(d, t, s, c)
+		dynamics.SubRun(d, t, s, c)
 	}
 }
 
@@ -73,31 +70,6 @@ func addToStack(d dynamics.Dwimmer, t term.T) {
 
 }
 
-func subAsk(d dynamics.Dwimmer, Q term.T, parent *term.SettingT) (term.T, *term.SettingT) {
-	d.Push(Q)
-	stackCheck()
-	child := term.InitT()
-	child.AppendTerm(dynamics.ParentChannel.T(term.MakeChannel(parent)))
-	child.AppendTerm(Q)
-	A := d.Run(child)
-	d.Pop()
-	return A, child
-}
-
-func subRun(d dynamics.Dwimmer, Q term.T, parent, child *term.SettingT) term.T {
-	d.Push(Q)
-	stackCheck()
-	child.AppendTerm(dynamics.ParentChannel.T(term.MakeChannel(parent)))
-	child.AppendTerm(Q)
-	A := d.Run(child)
-	parent.AppendTerm(dynamics.OpenChannel.T(term.MakeChannel(child)))
-	if A != nil {
-		parent.AppendTerm(A)
-	}
-	d.Pop()
-	return A
-}
-
 func (d *Dwimmer) Do(a term.ActionT, s *term.SettingT) term.T {
 	switch a.Act {
 	case term.Return:
@@ -105,7 +77,7 @@ func (d *Dwimmer) Do(a term.ActionT, s *term.SettingT) term.T {
 	case term.Ask:
 		Q := a.Args[0]
 		child := term.InitT()
-		subRun(d, Q, s, child)
+		dynamics.SubRun(d, Q, s, child)
 		return nil
 	case term.View:
 		value := a.Args[0]
@@ -144,7 +116,7 @@ func (d *Dwimmer) Do(a term.ActionT, s *term.SettingT) term.T {
 				return nil
 			}
 		}
-		subRun(d, Q, s, target)
+		dynamics.SubRun(d, Q, s, target)
 		return nil
 	case term.Correct:
 		n := a.IntArgs[0]
@@ -192,7 +164,7 @@ func (d *Dwimmer) Run(setting *term.SettingT) term.T {
 		transition, ok := d.Get(setting.Setting)
 		if !ok {
 			Q := FallThrough.T(represent.SettingT(setting))
-			result, _ := subAsk(d, Q, setting)
+			result, _ := dynamics.SubAsk(d, Q, setting)
 			var err term.T
 			switch result.Head() {
 			case TakeTransition:
@@ -220,20 +192,6 @@ func (d *Dwimmer) Run(setting *term.SettingT) term.T {
 	}
 }
 
-func stackSize() uint64 {
-	mem := new(runtime.MemStats)
-	runtime.ReadMemStats(mem)
-	return mem.StackInuse
-}
-
-func stackCheck() {
-	if rand.Int()%100 == 0 {
-		if stackSize() > 5e8 {
-			panic("stack is too large!")
-		}
-	}
-}
-
 func (d *Dwimmer) Ask(Q term.T) (term.T, *term.SettingT) {
 	setting := term.InitT().AppendTerm(Q)
 	return d.Run(setting), setting
@@ -254,7 +212,7 @@ var (
 func (d *Dwimmer) Answer(q term.T) (term.T, term.T) {
 	s := term.InitT()
 	s.AppendTerm(BuiltinAnswerer.T(q))
-	a, _ := subAsk(d, q, s)
+	a, _ := dynamics.SubAsk(d, q, s)
 	switch a.Head() {
 	case core.Answer:
 		return a.Values()[0], nil
@@ -262,7 +220,7 @@ func (d *Dwimmer) Answer(q term.T) (term.T, term.T) {
 		return a, nil
 	}
 	follow := term.InitT()
-	isAnswer := subRun(d, IsAnswer.T(a, q), s, follow)
+	isAnswer := dynamics.SubRun(d, IsAnswer.T(a, q), s, follow)
 	for {
 		switch isAnswer.Head() {
 		case core.Yes:
@@ -274,6 +232,6 @@ func (d *Dwimmer) Answer(q term.T) (term.T, term.T) {
 		case core.No:
 			return nil, a
 		}
-		isAnswer = subRun(d, IsAnswerClarify.T(), s, follow)
+		isAnswer = dynamics.SubRun(d, IsAnswerClarify.T(), s, follow)
 	}
 }

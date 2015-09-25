@@ -164,8 +164,21 @@ func ElicitAction(d dynamics.Dwimmer, s *term.Setting, hints bool) term.ActionC 
 	settingS := addNames(s)
 	ShowSettingS(d, settingS)
 	hint_strings := []string{}
+	tool_map := make(map[rune]string)
 	if hints {
 		hint_strings = GetHints(d, settingS, 6)
+		tools := similarity.SuggestedTemplates(d, s, 6)
+		if len(hint_strings) > 0 || len(tools) > 0 {
+			d.Println("")
+		}
+		if len(tools) > 0 {
+			d.Println("")
+		}
+		tips := []rune{'a', 's', 'd', 'w', 'e', 'j'}
+		for i, tool := range tools {
+			tool_map[tips[i]] = tool.String()
+			d.Println(fmt.Sprintf("%c: %v", tips[i], tool))
+		}
 		if len(hint_strings) > 0 {
 			d.Println("")
 		}
@@ -175,7 +188,7 @@ func ElicitAction(d dynamics.Dwimmer, s *term.Setting, hints bool) term.ActionC 
 	}
 	d.Println("")
 	for {
-		input := d.Readln(" < ", hint_strings)
+		input := d.Readln(" < ", hint_strings, tool_map)
 		a := parsing.ParseAction(input, settingS.Names)
 		if a == nil {
 			c := parsing.ParseTerm(input, settingS.Names)
