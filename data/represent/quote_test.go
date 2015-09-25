@@ -7,11 +7,10 @@ import (
 	"github.com/paulfchristiano/dwimmer/data/core"
 	"github.com/paulfchristiano/dwimmer/data/represent"
 	"github.com/paulfchristiano/dwimmer/term"
-	"github.com/paulfchristiano/dwimmer/ui"
 )
 
 func TestRepresentations(t *testing.T) {
-	d := dwimmer.NewDwimmer(ui.Dummy())
+	d := dwimmer.TestDwimmer()
 	defer d.Close()
 	template := term.Make("term with argument [] and second half here")
 	template2, err := represent.ToTemplate(d, represent.Template(template))

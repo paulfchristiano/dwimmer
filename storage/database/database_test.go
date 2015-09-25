@@ -51,9 +51,9 @@ func TestEncoding(t *testing.T) {
 	for _, x := range collection.All() {
 		if x["key"] == 1 {
 			t.Log(x["value"])
-			newVal, err := term.LoadSetting(x["value"])
-			if err != nil {
-				t.Error(err)
+			newVal, ok := term.LoadSetting(x["value"])
+			if !ok {
+				t.Error("failed to load setting")
 			}
 			newID := newVal.ID
 			oldID := setting.ID
@@ -63,9 +63,9 @@ func TestEncoding(t *testing.T) {
 			found++
 		}
 		if x["key"] == 2 {
-			newVal, err := term.LoadC(x["value"])
-			if err != nil {
-				t.Error(err)
+			newVal, ok := term.LoadC(x["value"])
+			if !ok {
+				t.Error("failed to load C")
 			}
 			newID := term.IDC(newVal)
 			oldID := term.IDC(cc)
@@ -79,9 +79,13 @@ func TestEncoding(t *testing.T) {
 		t.Errorf("found %d < 2 items", found)
 	}
 	{
-		newSetting, err := term.LoadSetting(collection.Get(1))
-		if err != nil {
-			t.Error(err)
+		savedSetting, ok := collection.Get(1)
+		if !ok {
+			t.Error("failed to retrieve from database")
+		}
+		newSetting, ok := term.LoadSetting(savedSetting)
+		if !ok {
+			t.Errorf("failed to load setting %v", savedSetting)
 		}
 		newID := newSetting.ID
 		oldID := setting.ID
@@ -90,9 +94,13 @@ func TestEncoding(t *testing.T) {
 		}
 	}
 	{
-		newC, err := term.LoadC(collection.Get(2))
-		if err != nil {
-			t.Error(err)
+		savedC, ok := collection.Get(2)
+		if !ok {
+			t.Error("failed to retriev from database")
+		}
+		newC, ok := term.LoadC(savedC)
+		if !ok {
+			t.Errorf("failed to load %v", savedC)
 		}
 		newID := term.IDC(newC)
 		oldID := term.IDC(cc)

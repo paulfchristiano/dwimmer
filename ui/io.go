@@ -48,12 +48,12 @@ func (d *dummy) Clear()           {}
 func (d *dummy) InitUI()          {}
 func (d *dummy) CloseUI()         {}
 
-func (d *dummy) Size() (int, int)    { return 0, 0 }
-func (d *dummy) PrintCh(c rune)      {}
-func (d *dummy) MoveCursor(x, y int) {}
+func (d *dummy) Size() (int, int)   { return 0, 0 }
+func (d *dummy) PrintCh(c rune)     {}
+func (d *dummy) SetCursor(x, y int) {}
 
 func (d *dummy) Readln(s string, hints []string, tools map[rune]string) string {
-	panic("asekd for input")
+	panic("asked for input")
 }
 func (d *dummy) CheckCh() (rune, bool) { return 0, false }
 

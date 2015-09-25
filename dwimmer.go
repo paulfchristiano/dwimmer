@@ -26,6 +26,16 @@ func (d *Dwimmer) Close() {
 	d.CloseStorage()
 }
 
+func TestDwimmer() *Dwimmer {
+	result := &Dwimmer{
+		Transitions:        dynamics.DefaultTransitions,
+		UIImplementer:      ui.Dummy(),
+		StorageImplementer: storage.Dummy(),
+		Stack:              &dynamics.BasicStack{},
+	}
+	return result
+}
+
 func NewDwimmer(impls ...ui.UIImplementer) *Dwimmer {
 	var impl ui.UIImplementer
 	if len(impls) == 1 {
@@ -47,13 +57,13 @@ func NewDwimmer(impls ...ui.UIImplementer) *Dwimmer {
 			panic(e)
 		}
 	}()
-	RunInitializers(result)
+	RunDefaultInitializers(result)
 	return result
 }
 
 var Initialization = term.Make("initializing a new dwimmer")
 
-func RunInitializers(d dynamics.Dwimmer) {
+func RunDefaultInitializers(d dynamics.Dwimmer) {
 	s := term.InitT()
 	s.AppendTerm(Initialization.T())
 	for _, t := range dynamics.DefaultInitializers {
