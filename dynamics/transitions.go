@@ -1,6 +1,9 @@
 package dynamics
 
 import (
+	"log"
+	"os"
+
 	"github.com/paulfchristiano/dwimmer/data/core"
 	"github.com/paulfchristiano/dwimmer/storage/database"
 	"github.com/paulfchristiano/dwimmer/term"
@@ -8,6 +11,7 @@ import (
 
 type Transition interface {
 	Step(Dwimmer, *term.SettingT) term.T
+	IsValid() bool
 }
 
 type NativeTransition func(Dwimmer, *term.SettingT) term.T
@@ -18,6 +22,14 @@ func (t NativeTransition) Step(d Dwimmer, s *term.SettingT) term.T {
 
 type SimpleTransition struct {
 	Action term.ActionC
+}
+
+func (t SimpleTransition) IsValid() bool {
+	return t.Action.IsValid()
+}
+
+func (t NativeTransition) IsValid() bool {
+	return true
 }
 
 func (t SimpleTransition) Step(d Dwimmer, s *term.SettingT) term.T {
@@ -40,7 +52,19 @@ type Transitions interface {
 	Continuations(*term.Setting) []*term.Setting
 }
 
-var DefaultTransitions = NewTransitionTable(database.Collection("newtransitions"))
+var (
+	logger             *log.Logger
+	DefaultTransitions *TransitionTable
+)
+
+func init() {
+	f, err := os.Create("dwimmer-log")
+	if err != nil {
+		panic("failed to create log file")
+	}
+	logger = log.New(f, "", log.Lshortfile|log.Ltime)
+	DefaultTransitions = NewTransitionTable(database.Collection("newtransitions"))
+}
 
 func NewTransitionTable(C database.C) *TransitionTable {
 	result := &TransitionTable{
@@ -54,6 +78,7 @@ func NewTransitionTable(C database.C) *TransitionTable {
 			settingRecord, ok = transition["setting"]
 		}
 		if !ok {
+			logger.Println("failed to find setting record in", transition)
 			continue
 		}
 		actionRecord, ok := transition["value"]
@@ -61,18 +86,26 @@ func NewTransitionTable(C database.C) *TransitionTable {
 			actionRecord, ok = transition["action"]
 		}
 		if !ok {
+			logger.Println("failed to find action record in", transition)
 			continue
 		}
 		setting, ok := term.LoadSetting(settingRecord)
 		if !ok {
+			logger.Println("failed to load setting from", settingRecord)
 			continue
 		}
 		action, ok := term.LoadActionC(actionRecord)
 		if !ok {
+			logger.Println("failed to load action from", actionRecord)
+			continue
+		}
+		if !action.IsValid() {
+			logger.Println("loaded invalid action", action)
 			continue
 		}
 		result.SetSimpleC(setting, action)
 	}
+	logger.Println("length:", len(result.table))
 	return result
 }
 

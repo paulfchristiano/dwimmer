@@ -1,9 +1,7 @@
 package dwimmer
 
 import (
-	"log"
 	"math/rand"
-	"os"
 	"runtime"
 
 	"github.com/paulfchristiano/dwimmer/data/core"
@@ -11,23 +9,12 @@ import (
 	"github.com/paulfchristiano/dwimmer/data/represent"
 	_ "github.com/paulfchristiano/dwimmer/data/strings"
 	"github.com/paulfchristiano/dwimmer/dynamics"
+	_ "github.com/paulfchristiano/dwimmer/dynamics/meta"
 	"github.com/paulfchristiano/dwimmer/storage"
 	_ "github.com/paulfchristiano/dwimmer/storage/store"
 	"github.com/paulfchristiano/dwimmer/term"
 	"github.com/paulfchristiano/dwimmer/ui"
 )
-
-var (
-	logger *log.Logger
-)
-
-func init() {
-	f, err := os.Create("dwimmer-log")
-	if err != nil {
-		panic("failed to create log file")
-	}
-	logger = log.New(f, "", log.Lshortfile|log.Ltime)
-}
 
 type Dwimmer struct {
 	dynamics.Transitions

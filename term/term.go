@@ -63,9 +63,10 @@ type T interface {
 	ID() TID
 
 	String() string
-	Pickle(intern.Packer) interface{}
-	Unpickle(intern.Packer, interface{}) (intern.Pickler, bool)
+	Pickle(intern.Packer) intern.Packed
+	Unpickle(intern.Packer, intern.Packed) (intern.Pickler, bool)
 	Key() interface{}
+	Test(intern.Pickler) bool
 }
 
 type C interface {
@@ -75,9 +76,10 @@ type C interface {
 	Uninstantiate([]string) S
 
 	String() string
-	Pickle(intern.Packer) interface{}
-	Unpickle(intern.Packer, interface{}) (intern.Pickler, bool)
+	Pickle(intern.Packer) intern.Packed
+	Unpickle(intern.Packer, intern.Packed) (intern.Pickler, bool)
 	Key() interface{}
+	Test(intern.Pickler) bool
 }
 
 type S interface {

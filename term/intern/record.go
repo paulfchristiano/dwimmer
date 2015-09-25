@@ -13,15 +13,20 @@ var WrongType = errors.New("wrong type of record provided")
 type Recorder struct {
 	packCache   map[interface{}]int64
 	unpackCache map[int64]Pickler
+	keyer       Packer
 	database.C
 }
 
-func NewRecorder(c database.C) *Recorder {
-	return &Recorder{
+func NewRecorder(c database.C, keyers ...Packer) *Recorder {
+	result := &Recorder{
 		packCache:   make(map[interface{}]int64),
 		unpackCache: make(map[int64]Pickler),
 		C:           c,
 	}
+	if len(keyers) == 1 {
+		result.keyer = keyers[0]
+	}
+	return result
 }
 
 var _ Packer = &Recorder{}
@@ -34,7 +39,10 @@ func (r Record) packable() {}
 
 var source = rand.NewSource(time.Now().UnixNano())
 
-func (rec *Recorder) UnpackPickler(record Packed, pickler Pickler) (Pickler, bool) {
+func (rec *Recorder) UnpackPickler(record Packed, pickler Pickler) (result Pickler, ok bool) {
+	defer func() {
+		ok = ok && pickler.Test(result)
+	}()
 	if k, isIndirect := indirect(record.(Record)); isIndirect {
 		result, ok := rec.unpackCache[k]
 		if ok {
@@ -44,23 +52,26 @@ func (rec *Recorder) UnpackPickler(record Packed, pickler Pickler) (Pickler, boo
 		if !found {
 			return nil, false
 		}
-		result, ok = pickler.Unpickle(rec, pickled)
+		result, ok = pickler.Unpickle(rec, Record{pickled})
 		if !ok {
 			return nil, false
 		}
 		rec.unpackCache[k] = result
-		rec.packCache[result.Key()] = k
+		key := result.Key()
+		if rec.keyer != nil {
+			key = rec.keyer.PackPickler(result)
+		}
+		rec.packCache[key] = k
 		return result, true
 	}
-	pickled, ok := UnpackPickled(rec, record)
-	if !ok {
-		return nil, false
-	}
-	return pickler.Unpickle(rec, pickled)
+	return pickler.Unpickle(rec, record)
 }
 
 func (rec *Recorder) PackPickler(pickler Pickler) Packed {
 	key := pickler.Key()
+	if rec.keyer != nil {
+		key = rec.keyer.PackPickler(pickler)
+	}
 	if result, ok := rec.packCache[key]; ok && key != nil {
 		return Record{result}
 	}
@@ -69,7 +80,7 @@ func (rec *Recorder) PackPickler(pickler Pickler) Packed {
 	for taken := true; taken; _, taken = rec.Get(cacheKey) {
 		cacheKey = source.Int63()
 	}
-	rec.Set(cacheKey, result)
+	rec.Set(cacheKey, result.(Record).Value)
 	rec.packCache[key] = cacheKey
 	rec.unpackCache[cacheKey] = pickler
 	return Record{cacheKey}

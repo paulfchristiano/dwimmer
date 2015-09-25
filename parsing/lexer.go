@@ -101,7 +101,7 @@ func (r *lexer) setActionResult(head string, e *Expr, n int) {
 func (r *lexer) setTransitiveActionResult(head string, object string, e *Expr) {
 	var a term.ActionC
 	switch strings.ToLower(head) {
-	case "tell", "ask", "clarify", "push", "follow", "followup":
+	case "tell", "ask", "clarify", "push", "follow", "followup", "reply", "respond":
 		switch o := r.parseWord(object).(type) {
 		case exprTerm:
 			c := toC(e)
@@ -109,6 +109,8 @@ func (r *lexer) setTransitiveActionResult(head string, object string, e *Expr) {
 		default:
 			return
 		}
+	default:
+		return
 	}
 	r.actionResult = &a
 }

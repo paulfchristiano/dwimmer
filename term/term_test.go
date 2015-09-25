@@ -74,10 +74,16 @@ func TestActionCID(t *testing.T) {
 }
 
 func TestSaving(t *testing.T) {
-	a := Make("a").T()
+	temp := Make("a")
+	_, ok := LoadTemplate(SaveTemplate(temp.Template()))
+	t.Log(SaveTemplate(temp.Template()))
+	if !ok {
+		t.Errorf("failed to load")
+	}
+	a := temp.T()
 	b := Make("b []").T(a)
 	c := Make("c []").T(a)
-	b, ok := LoadT(SaveT(b))
+	b, ok = LoadT(SaveT(b))
 	if !ok {
 		t.Error("failed to load")
 	}
@@ -91,15 +97,11 @@ func TestSaving(t *testing.T) {
 }
 
 func TestCaching(t *testing.T) {
-	temp := Make("a")
-	a := temp.T()
-	var b T
-	SaveT(a)
-	for i := 0; i < 10; i++ {
-		b, _ = LoadT(SaveT(a))
-	}
-	if b.(*CompoundT) != a.(*CompoundT) {
-		t.Errorf("saving and loading changed!")
+	temp := Make("xyzzy")
+	a := Make("like xyzzy []").T(temp.T())
+	b := Make("like xyzzy []").T(temp.T())
+	if SaveT(a) != SaveT(b) {
+		t.Errorf("SaveT(%v) = %v != %v = SaveT(%v)", a, SaveT(a), SaveT(b), b)
 	}
 }
 

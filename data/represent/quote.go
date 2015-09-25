@@ -135,7 +135,7 @@ func C(c term.C) term.T {
 	case term.ConstC:
 		return QuotedConstC.T(T(c.Val))
 	}
-	panic(fmt.Sprintf("trying to quote %v of unknown type", c))
+	panic(fmt.Sprintf("trying to quote %v of unknown type %T", c, c))
 }
 
 func T(t term.T) term.T {

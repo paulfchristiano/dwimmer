@@ -61,6 +61,31 @@ type ActionS struct {
 	IntArgs []int
 }
 
+func (a ActionC) IsValid() bool {
+	var allowed [][2]int
+	switch a.Act {
+	case Return, Ask, View:
+		allowed = [][2]int{{1, 0}}
+	case Replace:
+		allowed = [][2]int{{1, 0}, {1, 1}}
+	case Replay, Correct, Delete:
+		allowed = [][2]int{{0, 1}}
+	case Meta:
+		allowed = [][2]int{{0, 0}}
+	case Clarify:
+		allowed = [][2]int{{2, 0}}
+	default:
+		panic("unknown type of action")
+	}
+	actual := [2]int{len(a.Args), len(a.IntArgs)}
+	for _, possibility := range allowed {
+		if actual == possibility {
+			return true
+		}
+	}
+	return false
+}
+
 func (a ActionC) Instantiate(ts []T) ActionT {
 	args := make([]T, len(a.Args))
 	for i, arg := range a.Args {

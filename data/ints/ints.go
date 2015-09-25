@@ -75,6 +75,7 @@ var (
 	Plus        = term.Make("what is [] + []?")
 	Times       = term.Make("what is [] * []?")
 	Minus       = term.Make("what is [] - []?")
+	Divide      = term.Make("what is [] / []?")
 	Equal       = term.Make("is [] equal to []?")
 	Less        = term.Make("is [] less than []?")
 	More        = term.Make("is [] greater than []?")
@@ -83,7 +84,10 @@ var (
 )
 
 func init() {
-	QNames := []term.TemplateID{Plus, Times, Minus, Equal, Less, More, LessOrEqual, MoreOrEqual}
+	QNames := []term.TemplateID{Plus, Times, Minus, Equal, Less, More,
+		LessOrEqual, MoreOrEqual,
+		Divide,
+	}
 	QFuncs := [](func(dynamics.Dwimmer, *term.SettingT, ...term.T) term.T){
 		dynamics.Args2(addNative),
 		dynamics.Args2(multiplyNative),
@@ -93,6 +97,7 @@ func init() {
 		dynamics.Args2(testMore),
 		dynamics.Args2(testLessOrEqual),
 		dynamics.Args2(testMoreOrEqual),
+		dynamics.Args2(divideNative),
 	}
 
 	for i := range QNames {
@@ -115,3 +120,16 @@ func subtractNative(d dynamics.Dwimmer, s *term.SettingT, n, m term.T) term.T {
 func multiplyNative(d dynamics.Dwimmer, s *term.SettingT, n, m term.T) term.T {
 	return core.Answer.T(term.Int(int(n.(term.Int)) * int(m.(term.Int))))
 }
+func divideNative(d dynamics.Dwimmer, s *term.SettingT, n, m term.T) term.T {
+	a := int(n.(term.Int))
+	b := int(m.(term.Int))
+	remainder := a % b
+	if remainder == 0 {
+		return core.Answer.T(term.Int(a / b))
+	}
+	return QuotientAndRemainder.T(term.Int(a/b), term.Int(remainder))
+}
+
+var (
+	QuotientAndRemainder = term.Make("the quotient is [] with remainder []")
+)

@@ -92,9 +92,7 @@ func getTransition(d dynamics.Dwimmer, s *term.SettingT, quotedSetting term.T) t
 }
 
 func fallThrough(d dynamics.Dwimmer, s *term.SettingT, quotedSetting term.T) term.T {
-	logger.Printf("falling through")
 	settingT, err := represent.ToSettingT(d, quotedSetting)
-	logger.Printf("extracted setting")
 	if err != nil {
 		return term.Make("asked to decide what to do in setting [], "+
 			"but while converting to a setting received []").T(quotedSetting, err)
