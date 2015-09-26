@@ -97,7 +97,7 @@ func fallThrough(d dynamics.Dwimmer, s *term.SettingT, quotedSetting term.T) ter
 		return term.Make("asked to decide what to do in setting [], "+
 			"but while converting to a setting received []").T(quotedSetting, err)
 	}
-	action := ElicitAction(d, settingT.Setting, true)
+	action := ElicitAction(d, s, settingT.Setting, true)
 	transition := dynamics.SimpleTransition{action}
 	if shouldSave(transition) {
 		d.Save(settingT.Setting, transition)
@@ -128,7 +128,7 @@ func findAction(d dynamics.Dwimmer, s *term.SettingT, quotedSetting term.T) term
 	}
 	transition, ok := d.Get(setting)
 	if !ok {
-		action := ElicitAction(d, setting, true)
+		action := ElicitAction(d, s, setting, true)
 		transition = dynamics.SimpleTransition{action}
 		d.Save(setting, transition)
 	}
@@ -143,10 +143,24 @@ func ShowSettingS(d dynamics.Dwimmer, settingS *term.SettingS) {
 }
 
 //TODO only do this sometimes, or control better the length, or something...
-func GetHints(d dynamics.Dwimmer, s *term.SettingS, n int) []string {
+func GetHints(d dynamics.Dwimmer, context *term.SettingT, s *term.SettingS, n int) []string {
+	suggestions, err := d.Answer(similarity.SuggestedActions.T(
+		represent.Setting(s.Setting),
+		represent.Int(n),
+	), context)
+	if err != nil {
+		return []string{}
+	}
+	suggestionList, err := represent.ToList(d, suggestions)
+	if err != nil {
+		return []string{}
+	}
 	result := []string{}
-	actions, _ := similarity.Suggestions(d, s.Setting, n)
-	for _, actionC := range actions {
+	for _, suggestion := range suggestionList {
+		actionC, err := represent.ToActionC(d, suggestion)
+		if err != nil {
+			continue
+		}
 		actionS := actionC.Uninstantiate(s.Names)
 		result = append(result, actionS.String())
 	}
@@ -160,14 +174,14 @@ func reverseHints(l []string) {
 	}
 }
 
-func ElicitAction(d dynamics.Dwimmer, s *term.Setting, hints bool) term.ActionC {
-	settingS := addNames(s)
+func ElicitAction(d dynamics.Dwimmer, context *term.SettingT, subject *term.Setting, hints bool) term.ActionC {
+	settingS := addNames(subject)
 	ShowSettingS(d, settingS)
 	hint_strings := []string{}
 	tool_map := make(map[rune]string)
 	if hints {
-		hint_strings = GetHints(d, settingS, 6)
-		tools := similarity.SuggestedTemplates(d, s, 6)
+		hint_strings = GetHints(d, context, settingS, 6)
+		tools := similarity.SuggestedTemplates(d, subject, 6)
 		if len(hint_strings) > 0 || len(tools) > 0 {
 			d.Println("")
 		}
@@ -189,6 +203,9 @@ func ElicitAction(d dynamics.Dwimmer, s *term.Setting, hints bool) term.ActionC 
 	d.Println("")
 	for {
 		input := d.Readln(" < ", hint_strings, tool_map)
+		if input == "jump up" {
+			StartShell(d, Interrupted.T(represent.SettingT(context)))
+		}
 		a := parsing.ParseAction(input, settingS.Names)
 		if a == nil {
 			c := parsing.ParseTerm(input, settingS.Names)
@@ -211,7 +228,7 @@ func ElicitAction(d dynamics.Dwimmer, s *term.Setting, hints bool) term.ActionC 
 		if a != nil {
 			for i, n := range a.IntArgs {
 				if n == -1 {
-					a.IntArgs[i] = s.Size - 1
+					a.IntArgs[i] = subject.Size - 1
 				}
 			}
 			return *a

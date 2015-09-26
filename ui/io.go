@@ -95,18 +95,22 @@ func (t *Term) PrintCh(ch rune) {
 }
 
 func (t *Term) Print(s string) {
-	n := t.PrintNoMove(s)
-	t.MoveCursor(n, 0)
+	t.SetCursor(t.PrintNoMove(s))
 }
 
-func (t *Term) PrintNoMove(s string) int {
+func (t *Term) PrintNoMove(s string) (x, y int) {
 	t.Check()
-	x, y := t.x, t.y
+	x, y = t.x, t.y
+	width, _ := termbox.Size()
 	for _, ch := range s {
 		termbox.SetCell(x, y, ch, at, at)
 		x++
+		if x > width {
+			x = 0
+			y++
+		}
 	}
-	return x - t.x
+	return
 }
 
 func (t *Term) Println(s string) {
@@ -217,7 +221,7 @@ func (t *Term) Getln(hints []string, tools map[rune]string) string {
 		}
 		return try
 	}
-	exceeds := func(d int, down, up rune, offset int) int {
+	exceeds := func(d int, down, up string, offset int) int {
 		stack := 0
 		try := position + offset
 		for stack >= 0 {
@@ -230,11 +234,15 @@ func (t *Term) Getln(hints []string, tools map[rune]string) string {
 				try = len(input)
 				break
 			}
-			if rune(input[try]) == down {
-				stack--
+			for _, downRune := range down {
+				if rune(input[try]) == downRune {
+					stack--
+				}
 			}
-			if rune(input[try]) == up {
-				stack++
+			for _, upRune := range up {
+				if rune(input[try]) == upRune {
+					stack++
+				}
 			}
 		}
 		return try
@@ -266,9 +274,9 @@ func (t *Term) Getln(hints []string, tools map[rune]string) string {
 			case ev.Key == termbox.KeyCtrlS:
 				panic("meta")
 			case ev.Key == termbox.KeyCtrlE:
-				left := exceeds(-1, '[', ']', 0)
+				left := exceeds(-1, "[(", ")]", 0)
 				if left < len(input) {
-					right := exceeds(1, ']', '[', -1)
+					right := exceeds(1, "])", "([", -1)
 					setPos(left + 1)
 					input = fmt.Sprintf("%s%s", input[:left+1], input[right:])
 				}

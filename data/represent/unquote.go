@@ -6,7 +6,6 @@ import (
 	"github.com/paulfchristiano/dwimmer/data/core"
 	"github.com/paulfchristiano/dwimmer/data/ints"
 	"github.com/paulfchristiano/dwimmer/data/lists"
-	"github.com/paulfchristiano/dwimmer/data/strings"
 	"github.com/paulfchristiano/dwimmer/dynamics"
 	"github.com/paulfchristiano/dwimmer/term"
 )
@@ -229,7 +228,7 @@ func ToStr(d dynamics.Dwimmer, t term.T) (string, term.T) {
 		return string(t), nil
 	case *term.CompoundT:
 		switch t.Head() {
-		case strings.ByRunes:
+		case ByRunes:
 			l, err := ToList(d, t.Values()[0])
 			if err != nil {
 				return "", term.Make("asked to convert string, "+
@@ -256,7 +255,7 @@ func ToStr(d dynamics.Dwimmer, t term.T) (string, term.T) {
 
 func ToRune(d dynamics.Dwimmer, t term.T) (rune, term.T) {
 	switch t.Head() {
-	case strings.Rune:
+	case QuotedRune:
 		unicode, err := ToInt(d, t.Values()[0])
 		if err != nil {
 			return 0, term.Make("asked to convert character, "+

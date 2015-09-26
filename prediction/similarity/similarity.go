@@ -3,6 +3,8 @@ package similarity
 import (
 	"container/heap"
 
+	"github.com/paulfchristiano/dwimmer/data/core"
+	"github.com/paulfchristiano/dwimmer/data/represent"
 	"github.com/paulfchristiano/dwimmer/dynamics"
 	"github.com/paulfchristiano/dwimmer/term"
 	"github.com/xrash/smetrics"
@@ -11,7 +13,34 @@ import (
 var (
 	RelatedSettings = term.Make("what settings have been encountered before that are most analogous " +
 		"to the setting [], and what is their relationship to that setting?")
+	SuggestedActions = term.Make("what actions is the user most likely to take in setting [], " +
+		"based on analogies with similar settings they have encountered in the past? " +
+		"[] items should be returned as a list, sorted with most promising first")
 )
+
+func init() {
+	dynamics.AddNativeResponse(SuggestedActions, 2, dynamics.Args2(nativeSuggestedActions))
+}
+
+func nativeSuggestedActions(d dynamics.Dwimmer, context *term.SettingT, quotedSetting, quotedN term.T) term.T {
+	setting, err := represent.ToSetting(d, quotedSetting)
+	if err != nil {
+		return term.Make("was asked to generate suggestions in setting [], "+
+			"but received [] while converting it to native form").T(quotedSetting, err)
+	}
+	n, err := represent.ToInt(d, quotedN)
+	if err != nil {
+		return term.Make("was asked to generate [] suggestions, "+
+			"but received [] while converting it to native form").T(quotedN, err)
+	}
+	suggestions, _ := Suggestions(d, setting, n)
+	quotedSuggestions := make([]term.T, len(suggestions))
+	for i, suggestion := range suggestions {
+		quotedSuggestions[i] = represent.ActionC(suggestion)
+	}
+	return core.Answer.T(represent.List(quotedSuggestions))
+
+}
 
 func Suggestions(d dynamics.Dwimmer, s *term.Setting, n int) ([]term.ActionC, []float32) {
 	settings, settingPriorities := analogies(d, s, n)

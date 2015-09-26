@@ -37,7 +37,7 @@ func StartShell(d dynamics.Dwimmer, ts ...term.T) term.T {
 	}
 
 	for {
-		actionC := ElicitAction(d, shellSetting.Setting, false)
+		actionC := ElicitAction(d, term.InitT(), shellSetting.Setting, false)
 		shellSetting.AppendAction(actionC)
 		result := DoC(d, actionC, shellSetting)
 		if result != nil {

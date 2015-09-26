@@ -131,7 +131,7 @@ func (d *Dwimmer) Do(a term.ActionT, s *term.SettingT) term.T {
 	case term.Correct:
 		n := a.IntArgs[0]
 		old := s.Setting.Rollback(n)
-		action := ElicitAction(d, old, true)
+		action := ElicitAction(d, term.InitT(), old, true)
 		d.Save(old, dynamics.SimpleTransition{action})
 		s.AppendAction(action)
 		s.AppendTerm(core.OK.T())
@@ -174,7 +174,7 @@ func (d *Dwimmer) Run(setting *term.SettingT) term.T {
 		transition, ok := d.Get(setting.Setting)
 		if !ok {
 			Q := FallThrough.T(represent.SettingT(setting))
-			result, _ := dynamics.SubAsk(d, Q, setting)
+			result := dynamics.SubRun(d, Q, setting.Copy())
 			var err term.T
 			switch result.Head() {
 			case TakeTransition:
@@ -219,10 +219,15 @@ var (
 	IsAnswerClarify = term.Make("that response should be repeated as 'yes' or 'no'")
 )
 
-func (d *Dwimmer) Answer(q term.T) (term.T, term.T) {
-	s := term.InitT()
-	s.AppendTerm(BuiltinAnswerer.T(q))
-	a, _ := dynamics.SubAsk(d, q, s)
+func (d *Dwimmer) Answer(q term.T, optionalSetting ...*term.SettingT) (term.T, term.T) {
+	var s *term.SettingT
+	if len(optionalSetting) == 1 {
+		s = optionalSetting[0]
+	} else {
+		s = term.InitT()
+		s.AppendTerm(BuiltinAnswerer.T(q))
+	}
+	a := dynamics.SubRun(d, q, s)
 	switch a.Head() {
 	case core.Answer:
 		return a.Values()[0], nil

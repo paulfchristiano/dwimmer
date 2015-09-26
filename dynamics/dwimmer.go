@@ -11,7 +11,7 @@ import (
 
 type Dwimmer interface {
 	Ask(term.T) (term.T, *term.SettingT)
-	Answer(term.T) (term.T, term.T)
+	Answer(term.T, ...*term.SettingT) (term.T, term.T)
 	Run(*term.SettingT) term.T
 	Do(term.ActionT, *term.SettingT) term.T
 
@@ -35,22 +35,17 @@ func init() {
 	AddInitializer(SetupState.T())
 }
 
-func SubAsk(d Dwimmer, Q term.T, parent *term.SettingT) (term.T, *term.SettingT) {
+func SubRun(d Dwimmer, Q term.T, parent *term.SettingT, optionalChild ...*term.SettingT) term.T {
+	var child *term.SettingT
+	if len(optionalChild) == 1 {
+		child = optionalChild[0]
+	} else {
+		child = term.InitT()
+	}
+	child.AppendTerm(Parent(parent))
+	child.AppendTerm(Q)
 	d.Push(Q)
 	stackCheck()
-	child := term.InitT()
-	child.AppendTerm(ParentChannel.T(term.MakeChannel(parent)))
-	child.AppendTerm(Q)
-	A := d.Run(child)
-	d.Pop()
-	return A, child
-}
-
-func SubRun(d Dwimmer, Q term.T, parent, child *term.SettingT) term.T {
-	d.Push(Q)
-	stackCheck()
-	child.AppendTerm(ParentChannel.T(term.MakeChannel(parent)))
-	child.AppendTerm(Q)
 	A := d.Run(child)
 	parent.AppendTerm(OpenChannel.T(term.MakeChannel(child)))
 	if A != nil {

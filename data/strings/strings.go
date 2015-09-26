@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/paulfchristiano/dwimmer/data/core"
+	"github.com/paulfchristiano/dwimmer/data/represent"
 	"github.com/paulfchristiano/dwimmer/dynamics"
 	"github.com/paulfchristiano/dwimmer/term"
 )
@@ -24,8 +25,7 @@ var (
 	Len       = term.Make("what is the length of []?")
 	Concat    = term.Make("what is the result of concatenating [] to []?")
 	Bracketed = term.Make("what is the string formed by enclosing [] in brackets?")
-	Rune      = term.Make("the character with unicode representation []")
-	ByRunes   = term.Make("the string containing the sequence of characters []")
+	GetChar   = term.Make("what is the character that comes after [] others in the string []?")
 )
 
 func init() {
@@ -48,4 +48,20 @@ func init() {
 	s = dynamics.AddSimple(s, term.ViewS(term.Sr("b")))
 	s.AppendTemplate(term.Str("").Head())
 	dynamics.AddNative(s, dynamics.Args2(concat), "a", "b")
+
+	dynamics.AddNativeResponse(GetChar, 2, dynamics.Args2(getChar))
+}
+
+func getChar(d dynamics.Dwimmer, s *term.SettingT, quotedN, quotedS term.T) term.T {
+	n, err := represent.ToInt(d, quotedN)
+	if err != nil {
+		return term.Make("asked to index into a string, but received " +
+			"[] while converting the index to native format").T(err)
+	}
+	str, err := represent.ToStr(d, quotedS)
+	if err != nil {
+		return term.Make("asked to index into a string, but received " +
+			"[] while converting the string to native format").T(err)
+	}
+	return core.Answer.T(represent.Rune(rune(str[n])))
 }

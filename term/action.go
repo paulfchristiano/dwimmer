@@ -62,6 +62,8 @@ type ActionS struct {
 }
 
 func (a ActionC) IsValid() bool {
+	//NOTE: if the type of action is not in the list below,
+	//then nothing is allowed and IsValid wil (correctly) return false
 	var allowed [][2]int
 	switch a.Act {
 	case Return, Ask, View:

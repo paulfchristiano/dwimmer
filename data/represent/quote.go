@@ -5,7 +5,6 @@ import (
 
 	"github.com/paulfchristiano/dwimmer/data/core"
 	"github.com/paulfchristiano/dwimmer/data/lists"
-	"github.com/paulfchristiano/dwimmer/data/strings"
 	"github.com/paulfchristiano/dwimmer/dynamics"
 	"github.com/paulfchristiano/dwimmer/term"
 )
@@ -13,6 +12,8 @@ import (
 var (
 	QuotedNil = term.Make("nothing")
 
+	QuotedRune     = term.Make("the character with unicode representation []")
+	ByRunes        = term.Make("the string containing the sequence of characters []")
 	QuotedSetting  = term.Make("the setting with the list of lines []")
 	QuotedSettingT = term.Make("the concrete setting with template [] " +
 		"and list of arguments []")
@@ -191,7 +192,7 @@ func init() {
 }
 
 func Rune(c rune) term.T {
-	return strings.Rune.T(Int(int(c)))
+	return QuotedRune.T(Int(int(c)))
 }
 
 func Str(s string) term.T {
