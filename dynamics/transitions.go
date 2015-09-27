@@ -196,9 +196,9 @@ func AddNativeTo(table *TransitionTable, s *term.SettingS,
 		for i, index := range indices {
 			args[i] = s.Args[index]
 		}
+		s.AppendAction(term.AskC(NativeQ.C()))
 		result := f(d, s, args...)
 		if result != nil {
-			s.AppendAction(term.AskC(NativeQ.C()))
 			s.AppendTerm(core.Answer.T(result))
 			s.AppendAction(term.ReturnC(term.Cr(len(s.Args) - 1)))
 		}

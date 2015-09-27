@@ -214,6 +214,9 @@ func DeleteT(n int) ActionT {
 func MetaC() ActionC {
 	return ActionC{Meta, []C{}, []int{}}
 }
+func MetaS() ActionS {
+	return ActionS{Meta, []S{}, []int{}}
+}
 func ReplayC(n int) ActionC {
 	return ActionC{Replay, []C{}, []int{n}}
 }

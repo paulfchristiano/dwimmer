@@ -14,6 +14,7 @@ import (
 var (
 	cpuprofile = flag.String("cpu", "", "write cpu profile to file")
 	memprofile = flag.String("mem", "", "write mem profile to file")
+	state      = flag.String("state", "state", "load and save state to the DB entry with this key")
 )
 
 func main() {
@@ -26,7 +27,7 @@ func main() {
 		pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
 	}
-	d := dwimmer.NewDwimmer()
+	d := dwimmer.NewDwimmer(*state)
 	defer d.Close()
 	s := dwimmer.StartShell(d)
 	if *memprofile != "" {

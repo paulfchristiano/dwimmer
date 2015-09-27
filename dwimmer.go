@@ -1,6 +1,8 @@
 package dwimmer
 
 import (
+	"math/rand"
+
 	"github.com/paulfchristiano/dwimmer/data/core"
 	_ "github.com/paulfchristiano/dwimmer/data/ints"
 	"github.com/paulfchristiano/dwimmer/data/represent"
@@ -18,6 +20,7 @@ type Dwimmer struct {
 	dynamics.Stack
 	ui.UIImplementer
 	storage.StorageImplementer
+	lastWatcher *term.SettingT
 }
 
 func (d *Dwimmer) Close() {
@@ -36,17 +39,23 @@ func TestDwimmer() *Dwimmer {
 	return result
 }
 
-func NewDwimmer(impls ...ui.UIImplementer) *Dwimmer {
+func NewDwimmer(stateName string, impls ...ui.UIImplementer) *Dwimmer {
 	var impl ui.UIImplementer
 	if len(impls) == 1 {
 		impl = impls[0]
 	} else {
 		impl = &ui.Term{}
 	}
+	var store storage.StorageImplementer
+	if stateName == "" {
+		store = storage.Dummy()
+	} else {
+		store = storage.NewStorage(stateName)
+	}
 	result := &Dwimmer{
 		Transitions:        dynamics.DefaultTransitions,
 		UIImplementer:      impl,
-		StorageImplementer: storage.NewStorage("state"),
+		StorageImplementer: store,
 		Stack:              &dynamics.BasicStack{},
 	}
 	result.InitUI()
@@ -131,9 +140,8 @@ func (d *Dwimmer) Do(a term.ActionT, s *term.SettingT) term.T {
 	case term.Correct:
 		n := a.IntArgs[0]
 		old := s.Setting.Rollback(n)
-		action := ElicitAction(d, term.InitT(), old, true)
-		d.Save(old, dynamics.SimpleTransition{action})
-		s.AppendAction(action)
+		transition := ElicitAction(d, term.InitT(), old)
+		d.Save(old, transition)
 		s.AppendTerm(core.OK.T())
 		return nil
 	case term.Delete:
@@ -149,55 +157,62 @@ func (d *Dwimmer) Do(a term.ActionT, s *term.SettingT) term.T {
 }
 
 var (
+	watchFrequency      = 1000
+	watcherDepth   uint = 0
+)
+
+func (d *Dwimmer) watchdog(setting *term.SettingT) {
+	if rand.Int()%(watchFrequency<<(3*watcherDepth)) == 0 {
+		watcherDepth++
+		defer func() { watcherDepth-- }()
+		parent := setting.Copy().AppendAction(term.MetaC())
+		oldWatcher := d.lastWatcher
+		newWatcher := term.InitT()
+		var Q term.T
+		if d.lastWatcher == nil {
+			Q = IsAllWell.T(term.MakeChannel(parent))
+		} else {
+			Q = IsAllWellPred.T(term.MakeChannel(parent), term.MakeChannel(oldWatcher))
+		}
+		d.lastWatcher = newWatcher
+		dynamics.SubRun(d, Q, parent, newWatcher)
+	}
+}
+
+var (
+	IsAllWell     = term.Make("is everything OK in the state accessible over the channel []?")
+	IsAllWellPred = term.Make("is everything OK in the state accessible over the channel []? " +
+		"the last check was implemented by []")
 	DeleteNonVar   = term.Make("only variables can be deleted")
 	CurrentSetting = term.Make("the current setting is []")
 	Interrupted    = term.Make("execution was interrupted in setting []")
 )
 
 func (d *Dwimmer) Run(setting *term.SettingT) term.T {
+	goMeta := func() {
+		StartShell(d, Interrupted.T(represent.SettingT(setting)))
+	}
 	for {
-		goMeta := func() {
-			StartShell(d, Interrupted.T(represent.SettingT(setting)))
-		}
+		//d.watchdog(setting)
 		char, sent := d.CheckCh()
 		if sent {
 			if char == 'q' {
 				panic("interrupted")
-			}
-			if char == 's' {
+			} else if char == 's' {
 				goMeta()
 			} else {
 				d.Clear()
 				d.Debug("(Type [s] to interrupt execution and drop into a shell)")
+				d.Debug("(Type [q] to interrupt execution and quit)")
 			}
 		}
 		transition, ok := d.Get(setting.Setting)
 		if !ok {
-			Q := FallThrough.T(represent.SettingT(setting))
-			result := dynamics.SubRun(d, Q, setting.Copy())
-			var err term.T
-			switch result.Head() {
-			case TakeTransition:
-				transition, err = represent.ToTransition(d, result.Values()[0])
-				if err == nil {
-					ok = true
-				}
-			case core.OK:
-			default:
-				result, err = d.Answer(TransitionGiven.T(result, Q))
-				if err == nil {
-					transition, err = represent.ToTransition(d, result)
-					if err == nil {
-						ok = true
-					}
-				}
-			}
+			transition = ElicitAction(d, setting.Copy(), setting.Setting)
 		}
-		if ok {
-			result := transition.Step(d, setting)
-			if result != nil {
-				return result
-			}
+		result := transition.Step(d, setting)
+		if result != nil {
+			return result
 		}
 	}
 }

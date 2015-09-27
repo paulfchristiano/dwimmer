@@ -39,6 +39,9 @@ var (
 		"with one of the heads defined in the file quote.go")
 	UnquoteSettingLine = term.Make("what line of a setting is []? the answer should be  " +
 		"represented with one of the heads in quote.go")
+
+	ConversionError = term.Make("while trying to convert [] to the native format implied by the request, " +
+		"received the reply []")
 )
 
 func ToChannel(d dynamics.Dwimmer, t term.T) (term.T, term.T) {
