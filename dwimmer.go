@@ -6,7 +6,6 @@ import (
 	"github.com/paulfchristiano/dwimmer/data/represent"
 	_ "github.com/paulfchristiano/dwimmer/data/strings"
 	"github.com/paulfchristiano/dwimmer/dynamics"
-	_ "github.com/paulfchristiano/dwimmer/dynamics/meta"
 	"github.com/paulfchristiano/dwimmer/storage"
 	_ "github.com/paulfchristiano/dwimmer/storage/store"
 	"github.com/paulfchristiano/dwimmer/term"
