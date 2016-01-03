@@ -27,8 +27,10 @@ func init() {
 	s = dynamics.ExpectQuestion(term.InitS(), SetCursor, "Q", "x", "y")
 	dynamics.AddNative(s, dynamics.Args2(nativeSetCursor), "x", "y")
 
-	s = dynamics.ExpectQuestion(term.InitS(), GetCursor, "Q")
-	dynamics.AddNative(s, dynamics.Args0(nativeGetCursor))
+	/*
+		s = dynamics.ExpectQuestion(term.InitS(), GetCursor, "Q")
+		dynamics.AddNative(s, dynamics.Args0(nativeGetCursor))
+	*/
 
 	s = dynamics.ExpectQuestion(term.InitS(), Clear, "Q")
 	dynamics.AddNative(s, dynamics.Args0(nativeClear))
@@ -36,8 +38,10 @@ func init() {
 	s = dynamics.ExpectQuestion(term.InitS(), Size, "Q")
 	dynamics.AddNative(s, dynamics.Args0(nativeSize))
 
-	s = dynamics.ExpectQuestion(term.InitS(), GetChar, "Q")
-	dynamics.AddNative(s, dynamics.Args0(nativeGetChar))
+	/*
+		s = dynamics.ExpectQuestion(term.InitS(), GetChar, "Q")
+		dynamics.AddNative(s, dynamics.Args0(nativeGetChar))
+	*/
 }
 
 func nativeClear(d dynamics.Dwimmer, s *term.SettingT) term.T {
@@ -45,11 +49,14 @@ func nativeClear(d dynamics.Dwimmer, s *term.SettingT) term.T {
 	return core.OK.T()
 }
 
+/*
 func nativeGetCursor(d dynamics.Dwimmer, s *term.SettingT) term.T {
 	x, y := d.GetCursor()
 	return Pos.T(XYPos.T(represent.Int(x), represent.Int(y)))
 }
+*/
 
+/*
 func nativeGetChar(d dynamics.Dwimmer, s *term.SettingT) term.T {
 	c, key := d.GetCh()
 	if c != 0 {
@@ -57,6 +64,7 @@ func nativeGetChar(d dynamics.Dwimmer, s *term.SettingT) term.T {
 	}
 	return KeyEntered.T(term.Int(int(key)))
 }
+*/
 
 var (
 	KeyEntered = term.Make("the user did not enter a character, but entered a key with termbox Key code []")
